@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Professional Emergency CAD</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+
+        :root {
+            --bg-main: #0c1016;
+            --bg-side: #161b22;
+            --accent: #00a2ff;
+            --danger: #ff4d4d;
+            --success: #2ecc71;
+            --warning: #f1c40f;
+            --info: #9b59b6;
+            --text: #e6edf3;
+        }
+
+        body, html {
+            margin: 0; padding: 0; height: 100vh;
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg-main); color: var(--text);
+            overflow: hidden;
+        }
+
+        /* --- ЭКРАН ВХОДА --- */
+        #login-overlay {
+            position: fixed; inset: 0; background: var(--bg-main);
+            display: flex; align-items: center; justify-content: center; z-index: 1000;
+        }
+
+        .login-card {
+            background: var(--bg-side); padding: 40px; border-radius: 12px;
+            border: 1px solid #30363d; box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+            text-align: center; width: 380px;
+        }
+
+        input, select {
+            background: #0d1117; border: 1px solid #30363d; color: #fff;
+            padding: 12px; border-radius: 6px; margin-bottom: 15px; width: 100%; box-sizing: border-box;
+            outline: none;
+        }
+
+        button {
+            background: var(--accent); border: none; color: white;
+            padding: 12px 20px; border-radius: 6px; cursor: pointer; font-weight: bold;
+            transition: 0.3s; width: 100%;
+        }
+        button:hover { opacity: 0.8; transform: translateY(-1px); }
+
+        /* --- ОСНОВНОЙ ИНТЕРФЕЙС --- */
+        .app-container { display: none; height: 100vh; grid-template-columns: 280px 1fr; }
+
+        aside {
+            background: var(--bg-side); border-right: 1px solid #30363d;
+            display: flex; flex-direction: column;
+        }
+
+        .unit-card {
+            padding: 25px; border-bottom: 1px solid #30363d;
+            background: rgba(0,0,0,0.2);
+        }
+
+        .status-indicator {
+            display: flex; align-items: center; gap: 10px; margin-bottom: 15px;
+            font-size: 0.9rem; font-weight: bold;
+        }
+
+        .dot { width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 10px currentColor; }
+
+        /* Кнопки статусов */
+        .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .btn-status {
+            font-size: 0.7rem; padding: 8px 5px; background: #21262d; 
+            border: 1px solid #30363d; color: #8b949e;
+        }
+        .btn-status.active-st { border-color: var(--accent); color: #fff; background: rgba(0,162,255,0.1); }
+
+        nav ul { list-style: none; padding: 10px 0; margin: 0; }
+        nav li {
+            padding: 15px 25px; cursor: pointer; color: #8b949e;
+            transition: 0.2s; border-left: 3px solid transparent;
+        }
+        nav li:hover { background: #21262d; color: #fff; }
+        nav li.active { background: #21262d; color: var(--accent); border-left-color: var(--accent); }
+
+        /* КОНТЕНТ */
+        main { display: flex; flex-direction: column; overflow: hidden; }
+
+        header {
+            background: var(--bg-side); padding: 15px 30px;
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid #30363d; font-size: 0.8rem;
+        }
+
+        .module { display: none; padding: 30px; height: 100%; overflow-y: auto; box-sizing: border-box; }
+        .module.active { display: block; }
+
+        /* БАЗА ДАННЫХ */
+        .db-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; }
+        .citizen-card {
+            background: #1c2128; border: 1px solid #30363d; border-radius: 8px;
+            display: flex; overflow: hidden; position: relative;
+        }
+        .citizen-img { width: 110px; height: 140px; background: #30363d; object-fit: cover; }
+        .citizen-body { padding: 15px; flex-grow: 1; }
+        .badge-status {
+            position: absolute; top: 10px; right: 10px;
+            font-size: 0.6rem; padding: 2px 6px; border-radius: 4px; text-transform: uppercase;
+        }
+
+        /* АНИМАЦИИ */
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        .live-marker { color: var(--danger); animation: pulse 1.5s infinite; }
+
+    </style>
+</head>
+<body>
+
+    <audio id="sound-click" src="https://www.soundjay.com/buttons/button-16.mp3"></audio>
+
+    <div id="login-overlay">
+        <div class="login-card">
+            <h2 style="color: var(--accent); margin-top: 0;">TERMINAL ACCESS</h2>
+            <p style="color: #8b949e; font-size: 0.8rem;">Введите данные сотрудника</p>
+            <input type="text" id="unit_id" placeholder="Позывной (напр. 1-L-20)">
+            <select id="faction">
+                <option value="Полиция (LSPD)">Полиция (LSPD)</option>
+                <option value="Шерифы (BCSO)">Шерифы (BCSO)</option>
+                <option value="Медики (LSFD)">Медики (LSFD)</option>
+            </select>
+            <button onclick="initSystem()">АВТОРИЗАЦИЯ</button>
+        </div>
+    </div>
+
+    <div class="app-container" id="app">
+        <aside>
+            <div class="unit-card">
+                <div id="display-unit" style="font-size: 1.2rem; font-weight: bold;">UNIT-ID</div>
+                <div id="display-faction" style="font-size: 0.7rem; color: #8b949e; margin-bottom: 15px;"> faction </div>
+                
+                <div class="status-indicator">
+                    <div class="dot" id="status-dot" style="background: var(--success); color: var(--success);"></div>
+                    <span id="status-label">ДОСТУПЕН</span>
+                </div>
+
+                <div class="status-grid">
+                    <button class="btn-status" onclick="updateStatus('ДОСТУПЕН', 'var(--success)')">ДОСТУПЕН</button>
+                    <button class="btn-status" onclick="updateStatus('В ПУТИ', 'var(--warning)')">В ПУТИ</button>
+                    <button class="btn-status" onclick="updateStatus('НА ВЫЗОВЕ', 'var(--danger)')">НА ВЫЗОВЕ</button>
+                    <button class="btn-status" onclick="updateStatus('ЗАНЯТ', 'var(--info)')">ЗАНЯТ</button>
+                    <button class="btn-status" onclick="updateStatus('НЕДОСТУПЕН', '#555')" style="grid-column: span 2;">НЕДОСТУПЕН / 10-7</button>
+                </div>
+            </div>
+
+            <nav>
+                <ul>
+                    <li onclick="switchTab('dispatch')" id="nav-dispatch" class="active">📡 Диспетчер 911</li>
+                    <li onclick="switchTab('database')" id="nav-database">👤 База граждан</li>
+                    <li onclick="switchTab('map')" id="nav-map">📍 Локатор</li>
+                </ul>
+            </nav>
+
+            <div style="margin-top: auto; padding: 20px;">
+                <button onclick="location.reload()" style="background: #21262d; border: 1px solid #30363d; font-size: 0.8rem;">ЗАВЕРШИТЬ СМЕНУ</button>
+            </div>
+        </aside>
+
+        <main>
+            <header>
+                <div id="live-clock">00:00:00</div>
+                <div style="letter-spacing: 2px;">SECURE DATA LINK <span class="live-marker">● LIVE</span></div>
+                <div id="unit-tag">---</div>
+            </header>
+
+            <div id="mod-dispatch" class="module active">
+                <h3>Активные происшествия</h3>
+                <div id="calls-container">
+                    <div style="background: #1c2128; padding: 20px; border-radius: 8px; border-left: 4px solid var(--danger);">
+                        <div style="display: flex; justify-content: space-between;">
+                            <strong style="color: var(--danger);">КОД-3 | ВООРУЖЕННОЕ НАПАДЕНИЕ</strong>
+                            <span>19:42</span>
+                        </div>
+                        <p style="font-size: 0.9rem; color: #8b949e;">Локация: Палето-Бэй, магазин 24/7. Подозреваемый в маске.</p>
+                        <button style="width: auto; padding: 5px 15px; font-size: 0.7rem;">ПРИНЯТЬ ВЫЗОВ</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="mod-database" class="module">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+                    <h3>Центральный архив</h3>
+                    <button onclick="addPerson()" style="width: auto;">+ СОЗДАТЬ ДОСЬЕ</button>
+                </div>
+                <input type="text" id="db-search" placeholder="Поиск по имени или номеру жетона..." onkeyup="searchDB()">
+                <div class="db-grid" id="db-list">
+                    </div>
+            </div>
+
+            <div id="mod-map" class="module">
+                <h3>Тактическая обстановка</h3>
+                <div style="width: 100%; height: 80%; background: #0d1117; border: 1px solid #30363d; display: flex; align-items: center; justify-content: center; position: relative;">
+                    <div style="font-size: 0.8rem; color: #30363d;">[ КАРТА ЗАГРУЖАЕТСЯ... СЕКТОРЫ СКАНИРОВАНИЯ: 4-B, 4-C ]</div>
+                    <div style="position: absolute; top: 40%; left: 45%; text-align: center;">
+                        <div class="dot" style="background: var(--accent); margin: 0 auto;"></div>
+                        <div style="font-size: 0.6rem; margin-top: 5px;">ВАШ ЮНИТ</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let db = JSON.parse(localStorage.getItem('cad_v2_db')) || [
+            {name: "Carl Johnson", status: "КРИМИНАЛ", info: "Подозревается в связях с бандой Гроув-Стрит.", img: "https://i.imgur.com/8Q5u6S0.png"},
+            {name: "Frank Tenpenny", status: "ЧИСТ", info: "Офицер LSPD (в отставке).", img: "https://via.placeholder.com/110x140?text=PHOTO"}
+        ];
+
+        function initSystem() {
+            const id = document.getElementById('unit_id').value;
+            const fac = document.getElementById('faction').value;
+            if(!id) return alert("Введите позывной!");
+
+            document.getElementById('login-overlay').style.display = 'none';
+            document.getElementById('app').style.display = 'grid';
+            
+            document.getElementById('display-unit').innerText = id;
+            document.getElementById('display-faction').innerText = fac;
+            document.getElementById('unit-tag').innerText = id + " [" + fac.split(' ')[0] + "]";
+            
+            renderDB();
+            startClock();
+        }
+
+        function updateStatus(text, color) {
+            document.getElementById('status-label').innerText = text;
+            document.getElementById('status-dot').style.background = color;
+            document.getElementById('status-dot').style.color = color;
+            
+            // Звук
+            document.getElementById('sound-click').play();
+
+            // Подсветка активной кнопки
+            document.querySelectorAll('.btn-status').forEach(b => {
+                b.classList.toggle('active-st', b.innerText === text);
+            });
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.module').forEach(m => m.classList.remove('active'));
+            document.querySelectorAll('nav li').forEach(l => l.classList.remove('active'));
+            
+            document.getElementById('mod-' + tab).classList.add('active');
+            document.getElementById('nav-' + tab).classList.add('active');
+        }
+
+        function renderDB() {
+            const list = document.getElementById('db-list');
+            list.innerHTML = db.map(p => `
+                <div class="citizen-card">
+                    <img src="${p.img}" class="citizen-img">
+                    <div class="citizen-body">
+                        <div class="badge-status" style="background:${p.status === 'ЧИСТ' ? 'var(--success)' : 'var(--danger)'}">${p.status}</div>
+                        <div style="font-weight: bold; margin-bottom: 5px;">${p.name}</div>
+                        <div style="font-size: 0.75rem; color: #8b949e; line-height: 1.4;">${p.info}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function addPerson() {
+            const name = prompt("Введите Имя Фамилию:");
+            if(!name) return;
+            const info = prompt("Информация/Криминальный статус:");
+            db.push({
+                name: name,
+                status: "ЧИСТ",
+                info: info || "Нет данных.",
+                img: "https://via.placeholder.com/110x140?text=USER"
+            });
+            localStorage.setItem('cad_v2_db', JSON.stringify(db));
+            renderDB();
+        }
+
+        function searchDB() {
+            const query = document.getElementById('db-search').value.toLowerCase();
+            document.querySelectorAll('.citizen-card').forEach(card => {
+                card.style.display = card.innerText.toLowerCase().includes(query) ? "flex" : "none";
+            });
+        }
+
+        function startClock() {
+            setInterval(() => {
+                document.getElementById('live-clock').innerText = new Date().toLocaleTimeString();
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
