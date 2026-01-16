@@ -3,1128 +3,683 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TERMINAL // STATE NETWORK v1.0</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>GOS.OS | Единая Система Управления</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Consolas', 'Monaco', monospace;
+        /* =========================================
+           CORE STYLES & VARIABLES
+           ========================================= */
+        :root {
+            /* Palette */
+            --bg-dark: #0f1115;
+            --bg-panel: #161b22;
+            --bg-input: #0d1117;
+            --border-color: #30363d;
+            
+            /* Accents */
+            --primary-mvd: #2f81f7; /* Police Blue */
+            --primary-mchs: #f85149; /* Medic Red */
+            --accent-success: #238636;
+            --accent-warning: #d29922;
+            --text-main: #c9d1d9;
+            --text-muted: #8b949e;
+
+            /* Effects */
+            --glass: rgba(22, 27, 34, 0.85);
+            --shadow-card: 0 10px 30px rgba(0,0,0,0.5);
+            
+            /* Current Theme (Changed via JS) */
+            --theme-color: var(--primary-mvd); 
         }
 
-        body {
-            background-color: #0a0a0a;
-            color: #00ff00;
-            height: 100vh;
-            overflow: hidden;
-            position: relative;
-        }
-
-        /* Эффект сканирования */
-        .scan-line {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 5px;
-            background: linear-gradient(to bottom, transparent, #00ff00 50%, transparent);
-            animation: scan 4s linear infinite;
-            z-index: 1000;
-            pointer-events: none;
-            opacity: 0.3;
-        }
-
-        @keyframes scan {
-            0% { top: 0%; }
-            100% { top: 100%; }
-        }
-
-        /* Экран загрузки */
-        #loading-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #000;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 2000;
-        }
-
-        .loading-text {
-            font-size: 1.5rem;
-            margin-bottom: 20px;
-            text-shadow: 0 0 5px #00ff00;
-        }
-
-        .loading-bar {
-            width: 300px;
-            height: 4px;
-            background-color: #003300;
-            border: 1px solid #00aa00;
+        * { box-sizing: border-box; outline: none; }
+        
+        body, html {
+            margin: 0; padding: 0; height: 100vh;
+            font-family: 'Segoe UI', 'Roboto', Helvetica, Arial, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
             overflow: hidden;
         }
 
-        .loading-progress {
-            height: 100%;
-            width: 0%;
-            background-color: #00ff00;
-            animation: loading 2s ease-in-out forwards;
+        /* Scrollbar styling */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-dark); }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--theme-color); }
+
+        /* =========================================
+           BOOT & LOGIN SCREEN
+           ========================================= */
+        #boot-screen, #login-screen {
+            position: fixed; inset: 0; z-index: 9999;
+            background: #000;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
         }
 
-        @keyframes loading {
-            0% { width: 0%; }
-            100% { width: 100%; }
+        .boot-log {
+            font-family: 'Consolas', monospace; color: #33ff33;
+            width: 80%; max-width: 600px; font-size: 14px;
         }
 
-        /* Экран входа */
-        #login-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #000;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 1500;
+        .login-card {
+            background: var(--bg-panel); padding: 40px; width: 400px;
+            border: 1px solid var(--border-color); border-radius: 8px;
+            box-shadow: 0 0 50px rgba(47, 129, 247, 0.1);
+            position: relative; overflow: hidden;
         }
 
-        .login-title {
-            font-size: 2rem;
-            margin-bottom: 40px;
-            text-align: center;
-            text-shadow: 0 0 10px #00ff00;
+        .login-card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg, transparent, var(--theme-color), transparent);
         }
 
-        .login-box {
-            border: 2px solid #00aa00;
-            padding: 30px;
-            background-color: #001100;
-            width: 90%;
-            max-width: 400px;
+        .login-title { font-size: 24px; font-weight: 300; margin-bottom: 20px; text-align: center; letter-spacing: 2px; }
+        
+        /* Form Elements */
+        .form-group { margin-bottom: 20px; text-align: left; }
+        .form-label { font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 8px; text-transform: uppercase; }
+        
+        .input-control {
+            width: 100%; background: var(--bg-input); border: 1px solid var(--border-color);
+            color: white; padding: 12px; border-radius: 6px; transition: 0.3s;
+            font-family: inherit; font-size: 14px;
+        }
+        .input-control:focus { border-color: var(--theme-color); box-shadow: 0 0 0 3px rgba(47, 129, 247, 0.1); }
+
+        .btn-main {
+            width: 100%; background: var(--theme-color); color: white; border: none;
+            padding: 14px; border-radius: 6px; font-weight: 600; cursor: pointer;
+            text-transform: uppercase; letter-spacing: 1px; transition: 0.3s;
+        }
+        .btn-main:hover { filter: brightness(1.1); transform: translateY(-2px); }
+
+        /* =========================================
+           MAIN INTERFACE LAYOUT
+           ========================================= */
+        #app-interface { display: none; height: 100vh; grid-template-columns: 260px 1fr; }
+
+        /* Sidebar */
+        aside {
+            background: var(--bg-panel); border-right: 1px solid var(--border-color);
+            display: flex; flex-direction: column; padding: 20px 0;
         }
 
-        .login-input {
-            margin-bottom: 20px;
-        }
-
-        .login-input label {
-            display: block;
-            margin-bottom: 5px;
-            color: #00cc00;
-        }
-
-        .login-input input {
-            width: 100%;
-            padding: 10px;
-            background-color: #000;
-            border: 1px solid #00aa00;
-            color: #00ff00;
-            font-size: 1rem;
-        }
-
-        .login-input input:focus {
-            outline: none;
-            border-color: #00ff00;
-            box-shadow: 0 0 5px #00ff00;
-        }
-
-        .department-select {
-            margin-bottom: 25px;
-        }
-
-        .department-select label {
-            display: block;
+        .user-block {
+            padding: 0 20px 20px; border-bottom: 1px solid var(--border-color);
             margin-bottom: 10px;
-            color: #00cc00;
+        }
+        .user-rank { font-size: 12px; color: var(--theme-color); font-weight: bold; }
+        .user-name { font-size: 16px; font-weight: 600; margin-top: 5px; }
+
+        nav ul { list-style: none; padding: 0; margin: 0; }
+        nav li {
+            padding: 15px 25px; cursor: pointer; color: var(--text-muted);
+            display: flex; align-items: center; gap: 12px; transition: 0.2s;
+            border-left: 3px solid transparent;
+        }
+        nav li:hover { background: rgba(255,255,255,0.03); color: white; }
+        nav li.active {
+            background: rgba(47, 129, 247, 0.05); color: white;
+            border-left-color: var(--theme-color);
+        }
+        nav li i { width: 20px; text-align: center; }
+
+        /* Status Controls */
+        .status-panel { margin-top: auto; padding: 20px; border-top: 1px solid var(--border-color); }
+        .status-btn {
+            font-size: 11px; padding: 8px; width: 100%; margin-bottom: 5px;
+            background: transparent; border: 1px solid var(--border-color); color: var(--text-muted);
+            cursor: pointer; border-radius: 4px; text-align: left;
+        }
+        .status-btn.active { background: var(--accent-success); border-color: var(--accent-success); color: white; }
+        .status-btn.busy { background: var(--accent-warning); border-color: var(--accent-warning); color: #000; }
+
+        /* Main Content */
+        main { display: flex; flex-direction: column; overflow: hidden; position: relative; }
+        
+        header {
+            height: 60px; border-bottom: 1px solid var(--border-color);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 30px; background: var(--bg-panel);
         }
 
-        .dept-buttons {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
+        .clock-widget { font-variant-numeric: tabular-nums; font-weight: bold; font-size: 18px; }
+        .department-badge { 
+            padding: 5px 12px; background: var(--border-color); 
+            border-radius: 20px; font-size: 12px; font-weight: bold; 
         }
 
-        .dept-btn {
-            flex: 1;
-            min-width: 120px;
-            padding: 10px;
-            background-color: #002200;
-            border: 1px solid #007700;
-            color: #00cc00;
-            cursor: pointer;
-            text-align: center;
-            transition: all 0.2s;
+        /* Modules */
+        .workspace { padding: 30px; overflow-y: auto; height: calc(100vh - 60px); }
+        .module-page { display: none; animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        .module-page.active { display: block; }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        .dept-btn:hover, .dept-btn.active {
-            background-color: #004400;
-            border-color: #00ff00;
-            color: #00ff00;
-            box-shadow: 0 0 5px #00ff00;
+        /* =========================================
+           COMPONENTS
+           ========================================= */
+        .card {
+            background: var(--bg-panel); border: 1px solid var(--border-color);
+            border-radius: 8px; padding: 25px; margin-bottom: 25px;
+        }
+        
+        .card-title {
+            margin-top: 0; margin-bottom: 20px; font-size: 18px;
+            display: flex; align-items: center; gap: 10px;
+            padding-bottom: 15px; border-bottom: 1px solid var(--border-color);
         }
 
-        .login-btn {
-            width: 100%;
-            padding: 12px;
-            background-color: #003300;
-            border: 1px solid #00aa00;
-            color: #00ff00;
-            font-size: 1.1rem;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
 
-        .login-btn:hover {
-            background-color: #005500;
-            border-color: #00ff00;
-            box-shadow: 0 0 10px #00ff00;
-        }
+        /* Tables */
+        .data-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        .data-table th { text-align: left; color: var(--text-muted); padding: 12px; border-bottom: 2px solid var(--border-color); }
+        .data-table td { padding: 12px; border-bottom: 1px solid var(--border-color); color: var(--text-main); }
+        .data-table tr:hover td { background: rgba(255,255,255,0.02); }
 
-        /* Главный интерфейс */
-        #main-interface {
-            display: none;
-            width: 100%;
-            height: 100%;
-        }
+        /* Badges */
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
+        .badge-red { background: rgba(248, 81, 73, 0.2); color: #ff7b72; border: 1px solid rgba(248, 81, 73, 0.4); }
+        .badge-green { background: rgba(35, 134, 54, 0.2); color: #3fb950; border: 1px solid rgba(35, 134, 54, 0.4); }
+        .badge-blue { background: rgba(56, 139, 253, 0.2); color: #58a6ff; border: 1px solid rgba(56, 139, 253, 0.4); }
 
-        /* Шапка терминала */
-        .terminal-header {
-            background-color: #001100;
-            border-bottom: 2px solid #00aa00;
-            padding: 10px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        /* Law Selector */
+        .law-selector {
+            max-height: 200px; overflow-y: auto; background: var(--bg-input);
+            border: 1px solid var(--border-color); border-radius: 6px; padding: 10px;
         }
+        .law-item {
+            padding: 8px; cursor: pointer; border-radius: 4px; font-size: 13px;
+            display: flex; justify-content: space-between;
+        }
+        .law-item:hover { background: rgba(255,255,255,0.1); }
+        .law-item.selected { background: var(--theme-color); color: white; }
 
-        .terminal-title {
-            font-size: 1.5rem;
-            font-weight: bold;
-            text-shadow: 0 0 5px #00ff00;
+        /* Notification Toast */
+        #toast-container { position: fixed; bottom: 30px; right: 30px; display: flex; flex-direction: column; gap: 10px; }
+        .toast {
+            background: var(--bg-panel); border-left: 4px solid var(--theme-color);
+            padding: 15px 25px; border-radius: 4px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            display: flex; align-items: center; gap: 15px; color: white; min-width: 300px;
+            animation: slideInRight 0.3s;
         }
+        @keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
 
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
+        /* Quick Search Big Input */
+        .big-search { font-size: 24px; padding: 20px; }
 
-        .user-dept {
-            padding: 5px 10px;
-            background-color: #003300;
-            border: 1px solid #00aa00;
-            border-radius: 3px;
-        }
-
-        .clock {
-            font-size: 1.2rem;
-            color: #00cc00;
-        }
-
-        .logout-btn {
-            padding: 5px 15px;
-            background-color: #330000;
-            border: 1px solid #aa0000;
-            color: #ff6666;
-            cursor: pointer;
-        }
-
-        .logout-btn:hover {
-            background-color: #550000;
-            border-color: #ff0000;
-        }
-
-        /* Рабочая область */
-        .workspace {
-            display: flex;
-            height: calc(100vh - 60px);
-        }
-
-        /* Боковое меню */
-        .side-menu {
-            width: 70px;
-            background-color: #001a00;
-            border-right: 1px solid #005500;
-            padding-top: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .menu-item {
-            width: 50px;
-            height: 50px;
-            margin-bottom: 20px;
-            background-color: #003300;
-            border: 1px solid #007700;
-            color: #00cc00;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-            transition: all 0.2s;
-            position: relative;
-        }
-
-        .menu-item:hover, .menu-item.active {
-            background-color: #005500;
-            border-color: #00ff00;
-            color: #00ff00;
-            transform: scale(1.1);
-        }
-
-        .menu-item .tooltip {
-            position: absolute;
-            left: 60px;
-            background-color: #002200;
-            border: 1px solid #00aa00;
-            padding: 5px 10px;
-            white-space: nowrap;
-            display: none;
-            z-index: 100;
-        }
-
-        .menu-item:hover .tooltip {
-            display: block;
-        }
-
-        /* Основная область */
-        .main-area {
-            flex: 1;
-            padding: 20px;
-            background-color: #000;
-            position: relative;
-            overflow: auto;
-        }
-
-        /* Окно базы данных */
-        .window {
-            border: 2px solid #00aa00;
-            background-color: #000;
-            display: none;
-            flex-direction: column;
-            position: absolute;
-            min-width: 600px;
-            min-height: 400px;
-            box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
-        }
-
-        .window.active {
-            display: flex;
-        }
-
-        .window-header {
-            background-color: #002200;
-            padding: 8px 15px;
-            border-bottom: 1px solid #00aa00;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: move;
-        }
-
-        .window-title {
-            font-weight: bold;
-            color: #00ff00;
-        }
-
-        .window-controls {
-            display: flex;
-            gap: 10px;
-        }
-
-        .window-btn {
-            width: 20px;
-            height: 20px;
-            background-color: #003300;
-            border: 1px solid #007700;
-            color: #00cc00;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-            font-size: 12px;
-        }
-
-        .window-btn:hover {
-            background-color: #005500;
-            border-color: #00ff00;
-        }
-
-        .window-content {
-            flex: 1;
-            padding: 15px;
-            overflow: auto;
-        }
-
-        /* Стили для базы данных */
-        .db-search {
-            margin-bottom: 20px;
-            display: flex;
-            gap: 10px;
-        }
-
-        .db-search input {
-            flex: 1;
-            padding: 10px;
-            background-color: #000;
-            border: 1px solid #00aa00;
-            color: #00ff00;
-        }
-
-        .db-search button {
-            padding: 10px 20px;
-            background-color: #003300;
-            border: 1px solid #00aa00;
-            color: #00ff00;
-            cursor: pointer;
-        }
-
-        .db-search button:hover {
-            background-color: #005500;
-        }
-
-        .db-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .db-table th {
-            background-color: #002200;
-            border: 1px solid #007700;
-            padding: 10px;
-            text-align: left;
-        }
-
-        .db-table td {
-            border: 1px solid #007700;
-            padding: 10px;
-        }
-
-        .db-table tr:hover {
-            background-color: #002a00;
-        }
-
-        .status-wanted {
-            color: #ff5555;
-            font-weight: bold;
-        }
-
-        .status-clean {
-            color: #55ff55;
-        }
-
-        .action-btn {
-            padding: 5px 10px;
-            margin-right: 5px;
-            background-color: #003300;
-            border: 1px solid #007700;
-            color: #00cc00;
-            cursor: pointer;
-            font-size: 0.9rem;
-        }
-
-        .action-btn:hover {
-            background-color: #005500;
-            border-color: #00ff00;
-        }
-
-        /* Командная строка */
-        .cmd-terminal {
-            position: fixed;
-            bottom: 10px;
-            right: 10px;
-            width: 400px;
-            height: 200px;
-            background-color: rgba(0, 20, 0, 0.9);
-            border: 1px solid #00aa00;
-            display: none;
-            flex-direction: column;
-        }
-
-        .cmd-header {
-            background-color: #002200;
-            padding: 5px 10px;
-            border-bottom: 1px solid #00aa00;
-            display: flex;
-            justify-content: space-between;
-        }
-
-        .cmd-content {
-            flex: 1;
-            padding: 10px;
-            overflow-y: auto;
-            font-size: 0.9rem;
-        }
-
-        .cmd-input {
-            display: flex;
-            border-top: 1px solid #00aa00;
-        }
-
-        .cmd-prompt {
-            padding: 5px 10px;
-            background-color: #001100;
-            color: #00ff00;
-        }
-
-        .cmd-input input {
-            flex: 1;
-            padding: 5px;
-            background-color: transparent;
-            border: none;
-            color: #00ff00;
-            outline: none;
-        }
-
-        /* Уведомления */
-        .notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 15px;
-            background-color: #002200;
-            border: 1px solid #00aa00;
-            color: #00ff00;
-            max-width: 300px;
-            display: none;
-            z-index: 1000;
-        }
-
-        .notification.show {
-            display: block;
-            animation: fadeInOut 5s ease-in-out;
-        }
-
-        @keyframes fadeInOut {
-            0% { opacity: 0; transform: translateX(100px); }
-            10% { opacity: 1; transform: translateX(0); }
-            90% { opacity: 1; transform: translateX(0); }
-            100% { opacity: 0; transform: translateX(100px); }
-        }
     </style>
 </head>
 <body>
-    <!-- Эффект сканирования -->
-    <div class="scan-line"></div>
 
-    <!-- Экран загрузки -->
-    <div id="loading-screen">
-        <div class="loading-text">ИНИЦИАЛИЗАЦИЯ СИСТЕМЫ STATE NETWORK</div>
-        <div class="loading-bar">
-            <div class="loading-progress"></div>
-        </div>
-        <div style="margin-top: 20px; color: #00aa00; font-size: 0.9rem;">
-            Загрузка модулей безопасности...
+    <audio id="sfx-boot" src="https://www.soundjay.com/buttons/beep-01a.mp3"></audio>
+    <audio id="sfx-click" src="https://www.soundjay.com/buttons/button-16.mp3"></audio>
+    <audio id="sfx-alert" src="https://www.soundjay.com/mechanical/sounds/mechanical-clank-1.mp3"></audio>
+
+    <div id="boot-screen">
+        <div class="boot-log" id="boot-log-text"></div>
+    </div>
+
+    <div id="login-screen" style="display:none;">
+        <div class="login-card">
+            <h2 class="login-title">GOS.OS <span style="font-size:12px; opacity:0.5;">v4.2.1</span></h2>
+            
+            <div class="form-group">
+                <label class="form-label">Идентификатор сотрудника</label>
+                <input type="text" class="input-control" id="auth-name" placeholder="Фамилия И.О.">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Департамент</label>
+                <select class="input-control" id="auth-dept" onchange="changeThemePreview(this.value)">
+                    <option value="MVD">МВД / Полиция / ГИБДД</option>
+                    <option value="MCHS">МЧС / Скорая Помощь</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Код доступа</label>
+                <input type="password" class="input-control" value="12345">
+            </div>
+
+            <button class="btn-main" onclick="startSystem()">Войти в систему</button>
         </div>
     </div>
 
-    <!-- Экран входа -->
-    <div id="login-screen">
-        <div class="login-title">TERMINAL // ГОСУДАРСТВЕННАЯ СЕТЬ</div>
-        <div class="login-box">
-            <div class="department-select">
-                <label>ВЫБЕРИТЕ ПОДРАЗДЕЛЕНИЕ:</label>
-                <div class="dept-buttons">
-                    <div class="dept-btn" data-dept="ПОЛИЦИЯ">ПОЛИЦИЯ</div>
-                    <div class="dept-btn" data-dept="СКОРАЯ ПОМОЩЬ">СКОРАЯ ПОМОЩЬ</div>
-                    <div class="dept-btn" data-dept="ПОЖАРНАЯ СЛУЖБА">ПОЖАРНАЯ СЛУЖБА</div>
-                    <div class="dept-btn" data-dept="ДПС">ДПС</div>
-                    <div class="dept-btn" data-dept="ФСБ">ФСБ</div>
-                </div>
+    <div id="app-interface">
+        <aside>
+            <div class="user-block">
+                <div class="user-rank" id="ui-rank">СЕРЖАНТ</div>
+                <div class="user-name" id="ui-name">Иванов И.И.</div>
             </div>
-            <div class="login-input">
-                <label>ИДЕНТИФИКАТОР СОТРУДНИКА:</label>
-                <input type="text" id="login-id" placeholder="Введите ваш ID" value="OFFICER-731">
-            </div>
-            <div class="login-input">
-                <label>КОД ДОСТУПА:</label>
-                <input type="password" id="login-password" placeholder="Введите пароль" value="••••••••">
-            </div>
-            <button class="login-btn" id="login-button">ПОДКЛЮЧИТЬСЯ К СЕТИ</button>
-        </div>
-        <div style="margin-top: 30px; color: #007700; font-size: 0.8rem; text-align: center;">
-            ВНИМАНИЕ: Все действия в системе протоколируются.<br>
-            Несанкционированный доступ преследуется по закону.
-        </div>
-    </div>
+            
+            <nav id="nav-menu">
+                <ul>
+                    <li onclick="openModule('dashboard')" class="active"><i class="fas fa-home"></i> Сводка</li>
+                    <li class="role-mvd" onclick="openModule('protocols')"><i class="fas fa-file-contract"></i> Протоколы</li>
+                    <li class="role-mvd" onclick="openModule('search')"><i class="fas fa-search"></i> База граждан</li>
+                    <li class="role-mvd" onclick="openModule('vehicles')"><i class="fas fa-car"></i> Авто-поиск</li>
+                    <li class="role-mchs" onclick="openModule('medical')"><i class="fas fa-notes-medical"></i> Карты пациентов</li>
+                    <li class="role-mchs" onclick="openModule('beds')"><i class="fas fa-procedures"></i> Коечный фонд</li>
+                    <li onclick="openModule('database')"><i class="fas fa-book"></i> База Знаний</li>
+                    <li onclick="openModule('archive')"><i class="fas fa-history"></i> Архив Смены</li>
+                </ul>
+            </nav>
 
-    <!-- Главный интерфейс -->
-    <div id="main-interface">
-        <div class="terminal-header">
-            <div class="terminal-title">STATE NETWORK // ТЕРМИНАЛ ДОСТУПА</div>
-            <div class="user-info">
-                <div class="user-dept" id="current-dept">ПОЛИЦИЯ</div>
-                <div class="clock" id="clock">00:00:00</div>
-                <button class="logout-btn" id="logout-button">ЗАВЕРШИТЬ СЕАНС</button>
+            <div class="status-panel">
+                <label class="form-label">Мой Статус</label>
+                <button class="status-btn active" onclick="setStatus(this, 'ДОСТУПЕН')">10-8 Доступен</button>
+                <button class="status-btn" onclick="setStatus(this, 'ВЫЕХАЛ')">10-5 В пути</button>
+                <button class="status-btn busy" onclick="setStatus(this, 'ЗАНЯТ')">10-6 Занят</button>
             </div>
-        </div>
+        </aside>
 
-        <div class="workspace">
-            <!-- Боковое меню -->
-            <div class="side-menu">
-                <div class="menu-item active" data-window="db">
-                    <i class="fas fa-database"></i>
-                    <div class="tooltip">БАЗА ДАННЫХ</div>
+        <main>
+            <header>
+                <div class="department-badge" id="ui-dept">DEPT</div>
+                <div style="flex-grow:1; text-align:center; font-weight:600; letter-spacing:1px; opacity:0.7;">
+                    SECURE CONNECTION ESTABLISHED
                 </div>
-                <div class="menu-item" data-window="calls">
-                    <i class="fas fa-phone-alt"></i>
-                    <div class="tooltip">ВЫЗОВЫ</div>
-                </div>
-                <div class="menu-item" data-window="fines">
-                    <i class="fas fa-file-invoice-dollar"></i>
-                    <div class="tooltip">ШТРАФЫ</div>
-                </div>
-                <div class="menu-item" data-window="duty">
-                    <i class="fas fa-user-clock"></i>
-                    <div class="tooltip">СЛУЖБА</div>
-                </div>
-                <div class="menu-item" data-window="reports">
-                    <i class="fas fa-chart-bar"></i>
-                    <div class="tooltip">ОТЧЕТЫ</div>
-                </div>
-                <div class="menu-item" id="cmd-toggle">
-                    <i class="fas fa-terminal"></i>
-                    <div class="tooltip">ТЕРМИНАЛ</div>
-                </div>
-            </div>
+                <div class="clock-widget" id="clock">00:00:00</div>
+            </header>
 
-            <!-- Основная область с окнами -->
-            <div class="main-area" id="workspace-area">
-                <!-- Окно базы данных -->
-                <div class="window active" id="window-db" style="width: 800px; height: 500px; left: 50px; top: 30px;">
-                    <div class="window-header">
-                        <div class="window-title"><i class="fas fa-database"></i> ГОСУДАРСТВЕННАЯ БАЗА ДАННЫХ ГРАЖДАН</div>
-                        <div class="window-controls">
-                            <div class="window-btn" data-action="minimize">—</div>
-                            <div class="window-btn" data-action="maximize">□</div>
-                            <div class="window-btn" data-action="close">×</div>
+            <div class="workspace">
+                
+                <div id="mod-dashboard" class="module-page active">
+                    <h2 class="card-title">Оперативная обстановка</h2>
+                    
+                    <div class="grid-3">
+                        <div class="card" style="text-align:center;">
+                            <h1 style="font-size:40px; margin:0; color:var(--theme-color);" id="stat-calls">0</h1>
+                            <span class="form-label">Вызовов за смену</span>
+                        </div>
+                        <div class="card" style="text-align:center;">
+                            <h1 style="font-size:40px; margin:0; color:var(--accent-warning);" id="stat-reports">0</h1>
+                            <span class="form-label">Оформлено отчетов</span>
+                        </div>
+                        <div class="card" style="text-align:center;">
+                            <h1 style="font-size:40px; margin:0; color:var(--accent-success);">A+</h1>
+                            <span class="form-label">Эффективность</span>
                         </div>
                     </div>
-                    <div class="window-content">
-                        <div class="db-search">
-                            <input type="text" id="search-input" placeholder="Поиск по ФИО, ID или номеру лицензии...">
-                            <button id="search-btn"><i class="fas fa-search"></i> ПОИСК</button>
-                            <button id="add-citizen-btn"><i class="fas fa-user-plus"></i> ДОБАВИТЬ</button>
-                        </div>
-                        
-                        <table class="db-table">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>ФИО</th>
-                                    <th>ЛИЦЕНЗИИ</th>
-                                    <th>СТАТУС</th>
-                                    <th>ШТРАФЫ</th>
-                                    <th>ДЕЙСТВИЯ</th>
-                                </tr>
-                            </thead>
-                            <tbody id="db-table-body">
-                                <!-- Данные будут заполнены через JavaScript -->
-                            </tbody>
-                        </table>
+
+                    <div class="card">
+                        <h3 class="card-title"><i class="fas fa-broadcast-tower"></i> Прямая трансляция диспетчера</h3>
+                        <div style="height:150px; overflow-y:auto; font-family:'Consolas', monospace; font-size:13px; color:#aaa;" id="live-feed">
+                            </div>
                     </div>
                 </div>
 
-                <!-- Окно вызовов (пока скрыто) -->
-                <div class="window" id="window-calls" style="width: 700px; height: 450px; left: 100px; top: 50px;">
-                    <div class="window-header">
-                        <div class="window-title"><i class="fas fa-phone-alt"></i> АКТИВНЫЕ ВЫЗОВЫ И ЗАЯВЛЕНИЯ</div>
-                        <div class="window-controls">
-                            <div class="window-btn" data-action="minimize">—</div>
-                            <div class="window-btn" data-action="maximize">□</div>
-                            <div class="window-btn" data-action="close">×</div>
+                <div id="mod-protocols" class="module-page">
+                    <div class="card">
+                        <h3 class="card-title"><i class="fas fa-pen-alt"></i> Составить протокол</h3>
+                        <div class="grid-2">
+                            <div>
+                                <div class="form-group">
+                                    <label class="form-label">Гражданин</label>
+                                    <input type="text" class="input-control" id="prot-name" placeholder="ФИО нарушителя">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Паспортные данные / ID</label>
+                                    <input type="text" class="input-control" id="prot-id" placeholder="XX-XXXXXX">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Выберите статьи (УК/КоАП)</label>
+                                    <div class="law-selector" id="law-list">
+                                        </div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="form-group">
+                                    <label class="form-label">Описание ситуации</label>
+                                    <textarea class="input-control" rows="5" id="prot-desc"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Итоговая мера</label>
+                                    <input type="text" class="input-control" id="prot-result" placeholder="Штраф / Срок (рассчитывается автоматически)" readonly>
+                                </div>
+                                <button class="btn-main" onclick="submitProtocol()">Зарегистрировать протокол</button>
+                            </div>
                         </div>
-                    </div>
-                    <div class="window-content">
-                        <p>Здесь будет список вызовов и заявлений...</p>
                     </div>
                 </div>
 
-                <!-- Окно штрафов (пока скрыто) -->
-                <div class="window" id="window-fines" style="width: 750px; height: 400px; left: 150px; top: 80px;">
-                    <div class="window-header">
-                        <div class="window-title"><i class="fas fa-file-invoice-dollar"></i> СИСТЕМА УЧЕТА ШТРАФОВ</div>
-                        <div class="window-controls">
-                            <div class="window-btn" data-action="minimize">—</div>
-                            <div class="window-btn" data-action="maximize">□</div>
-                            <div class="window-btn" data-action="close">×</div>
+                <div id="mod-search" class="module-page">
+                    <div class="card">
+                        <input type="text" class="input-control big-search" placeholder="Поиск: ФИО, Номер телефона, ID..." id="search-db-input" onkeyup="searchCitizen()">
+                    </div>
+                    <div id="search-results">
+                        </div>
+                </div>
+
+                <div id="mod-medical" class="module-page">
+                    <div class="grid-2">
+                        <div class="card">
+                            <h3 class="card-title">Создание карты вызова</h3>
+                            <div class="form-group">
+                                <label class="form-label">Пациент</label>
+                                <input type="text" class="input-control" id="med-name">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Жалобы (Анамнез)</label>
+                                <textarea class="input-control" rows="3" id="med-anamnesis"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Код срочности (Триаж)</label>
+                                <select class="input-control" id="med-triage">
+                                    <option value="green">ЗЕЛЕНЫЙ (Легкий)</option>
+                                    <option value="yellow">ЖЕЛТЫЙ (Средний)</option>
+                                    <option value="red">КРАСНЫЙ (Тяжелый/Реанимация)</option>
+                                    <option value="black">ЧЕРНЫЙ (Летальный)</option>
+                                </select>
+                            </div>
+                            <button class="btn-main" onclick="submitMedical()" style="background: var(--primary-mchs)">Оформить карту</button>
+                        </div>
+                        <div class="card">
+                            <h3 class="card-title">Активные пациенты</h3>
+                            <table class="data-table">
+                                <thead><tr><th>Имя</th><th>Статус</th><th>Время</th></tr></thead>
+                                <tbody id="med-table-body"></tbody>
+                            </table>
                         </div>
                     </div>
-                    <div class="window-content">
-                        <p>Здесь будет система выписки штрафов...</p>
-                    </div>
                 </div>
+
+                <div id="mod-archive" class="module-page">
+                    <h2 class="card-title">Архив действий смены</h2>
+                    <div class="card" id="archive-content">
+                        <p style="text-align:center; color:gray">Записей пока нет.</p>
+                    </div>
+                    <button class="input-control" onclick="copyReport()" style="width:auto; float:right;">Скопировать отчет для Discord</button>
+                </div>
+
             </div>
-        </div>
+        </main>
     </div>
 
-    <!-- Командная строка -->
-    <div class="cmd-terminal" id="cmd-terminal">
-        <div class="cmd-header">
-            <div>ТЕРМИНАЛ // АДМИНИСТРАТИВНЫЙ ДОСТУП</div>
-            <div class="window-btn" style="width: 15px; height: 15px;" id="cmd-close">×</div>
-        </div>
-        <div class="cmd-content" id="cmd-output">
-            > Добро пожаловать в административный терминал.<br>
-            > Введите 'help' для списка команд.<br><br>
-        </div>
-        <div class="cmd-input">
-            <div class="cmd-prompt">> </div>
-            <input type="text" id="cmd-input" autocomplete="off">
-        </div>
-    </div>
-
-    <!-- Уведомления -->
-    <div class="notification" id="notification">
-        <div id="notification-text">Уведомление</div>
-    </div>
+    <div id="toast-container"></div>
 
     <script>
-        // Тестовые данные для базы данных
-        const citizens = [
-            { id: 1, name: "Иванов_Иван_Петрович", licenses: "A, B", status: "clean", fines: 0 },
-            { id: 2, name: "Петров_Алексей_Сергеевич", licenses: "A, B, C", status: "wanted", fines: 12500 },
-            { id: 3, name: "Сидорова_Мария_Владимировна", licenses: "A", status: "clean", fines: 3500 },
-            { id: 4, name: "Кузнецов_Дмитрий_Алексеевич", licenses: "B", status: "suspended", fines: 8000 },
-            { id: 5, name: "Смирнов_Андрей_Игоревич", licenses: "A, B, D", status: "clean", fines: 0 },
-            { id: 6, name: "Федорова_Екатерина_Олеговна", licenses: "A", status: "clean", fines: 1500 },
-            { id: 7, name: "Морозов_Павел_Витальевич", licenses: "B, C", status: "wanted", fines: 22000 },
-            { id: 8, name: "Волкова_Ольга_Дмитриевна", licenses: "A, B", status: "clean", fines: 0 },
-            { id: 9, name: "Новиков_Сергей_Анатольевич", licenses: "A, C", status: "suspended", fines: 5000 },
-            { id: 10, name: "Лебедева_Анна_Сергеевна", licenses: "B", status: "clean", fines: 700 }
+        // --- DATA LAYER ---
+        const LAWS = [
+            { id: "1.1", code: "УК", text: "Нанесение телесных повреждений", time: 20, fine: 1000 },
+            { id: "2.5", code: "УК", text: "Угон транспортного средства", time: 30, fine: 5000 },
+            { id: "3.1", code: "УК", text: "Убийство", time: 100, fine: 20000 },
+            { id: "10.5", code: "КоАП", text: "Нарушение ПДД (Скорость)", time: 0, fine: 500 },
+            { id: "12.1", code: "КоАП", text: "Неподчинение сотруднику", time: 10, fine: 2000 },
+            { id: "228", code: "УК", text: "Хранение запрещенных веществ", time: 40, fine: 10000 },
         ];
 
-        // Текущее состояние системы
-        let currentDept = "ПОЛИЦИЯ";
-        let currentOfficer = "OFFICER-731";
-        let activeWindow = "db";
-        let draggedWindow = null;
-        let dragOffset = { x: 0, y: 0 };
+        let MOCK_CITIZENS = [
+            { name: "Сидоров Алексей Петрович", age: 34, lic: "A, B", status: "WANTED", note: "Вооружен и опасен" },
+            { name: "Петрова Мария Ивановна", age: 22, lic: "B", status: "CLEAN", note: "Законопослушная" },
+            { name: "Volkov Dmitry", age: 40, lic: "None", status: "PRISON", note: "Заключенный ИК-1" }
+        ];
 
-        // Инициализация при загрузке страницы
-        document.addEventListener('DOMContentLoaded', function() {
-            // Имитация загрузки системы
-            setTimeout(() => {
-                document.getElementById('loading-screen').style.display = 'none';
-                document.getElementById('login-screen').style.display = 'flex';
-            }, 2000);
+        let CURRENT_USER = { name: "", dept: "" };
+        let SESSION_LOGS = [];
+        let SELECTED_LAWS = [];
 
-            // Инициализация часов
-            updateClock();
-            setInterval(updateClock, 1000);
+        // --- CORE FUNCTIONS ---
 
-            // Инициализация базы данных
-            populateDatabase();
-
-            // Настройка событий
-            setupEventListeners();
-        });
-
-        // Функция обновления времени
-        function updateClock() {
-            const now = new Date();
-            const timeString = now.toLocaleTimeString('ru-RU');
-            document.getElementById('clock').textContent = timeString;
-        }
-
-        // Заполнение таблицы базы данных
-        function populateDatabase() {
-            const tbody = document.getElementById('db-table-body');
-            tbody.innerHTML = '';
-
-            citizens.forEach(citizen => {
-                const row = document.createElement('tr');
-                
-                let statusText, statusClass;
-                if (citizen.status === 'wanted') {
-                    statusText = 'В РОЗЫСКЕ';
-                    statusClass = 'status-wanted';
-                } else if (citizen.status === 'suspended') {
-                    statusText = 'ЛИШЕН ПРАВ';
-                    statusClass = 'status-wanted';
-                } else {
-                    statusText = 'ЧИСТ';
-                    statusClass = 'status-clean';
+        // Boot Animation
+        window.onload = function() {
+            const log = document.getElementById('boot-log-text');
+            const lines = [
+                "BIOS CHECK... OK",
+                "LOADING KERNEL... OK",
+                "MOUNTING FILE SYSTEM... OK",
+                "CONNECTING TO GOVERNMENT SECURE NETWORK...",
+                "ESTABLISHING ENCRYPTED TUNNEL (256-bit)... SUCCESS",
+                "INITIALIZING UI SUBSYSTEM..."
+            ];
+            let i = 0;
+            const interval = setInterval(() => {
+                log.innerHTML += lines[i] + "<br>";
+                i++;
+                if(i >= lines.length) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        document.getElementById('boot-screen').style.display = 'none';
+                        document.getElementById('login-screen').style.display = 'flex';
+                    }, 800);
                 }
-
-                row.innerHTML = `
-                    <td>${citizen.id}</td>
-                    <td>${citizen.name}</td>
-                    <td>${citizen.licenses}</td>
-                    <td class="${statusClass}">${statusText}</td>
-                    <td>${citizen.fines} руб.</td>
-                    <td>
-                        <button class="action-btn" onclick="showCitizenDetails(${citizen.id})">ПРОСМОТР</button>
-                        <button class="action-btn" onclick="issueFine(${citizen.id})">ШТРАФ</button>
-                        ${citizen.status === 'wanted' ? 
-                          `<button class="action-btn" style="background-color: #550000; border-color: #ff0000;" onclick="removeWanted(${citizen.id})">СНЯТЬ РОЗЫСК</button>` : 
-                          `<button class="action-btn" style="background-color: #330000; border-color: #aa0000;" onclick="setWanted(${citizen.id})">ОБЪЯВИТЬ В РОЗЫСК</button>`}
-                    </td>
-                `;
-                
-                tbody.appendChild(row);
-            });
-        }
-
-        // Настройка всех обработчиков событий
-        function setupEventListeners() {
-            // Выбор подразделения
-            document.querySelectorAll('.dept-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    document.querySelectorAll('.dept-btn').forEach(b => b.classList.remove('active'));
-                    this.classList.add('active');
-                    currentDept = this.getAttribute('data-dept');
-                });
-            });
-
-            // Кнопка входа
-            document.getElementById('login-button').addEventListener('click', login);
-
-            // Поле пароля - Enter для входа
-            document.getElementById('login-password').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') login();
-            });
-
-            // Кнопка выхода
-            document.getElementById('logout-button').addEventListener('click', logout);
-
-            // Меню боковой панели
-            document.querySelectorAll('.menu-item[data-window]').forEach(item => {
-                item.addEventListener('click', function() {
-                    const windowId = this.getAttribute('data-window');
-                    switchWindow(windowId);
-                });
-            });
-
-            // Переключение терминала
-            document.getElementById('cmd-toggle').addEventListener('click', toggleTerminal);
-            document.getElementById('cmd-close').addEventListener('click', toggleTerminal);
-
-            // Командная строка
-            document.getElementById('cmd-input').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    processCommand(this.value);
-                    this.value = '';
-                }
-            });
-
-            // Поиск в БД
-            document.getElementById('search-btn').addEventListener('click', searchDatabase);
-            document.getElementById('search-input').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') searchDatabase();
-            });
-
-            // Добавление гражданина
-            document.getElementById('add-citizen-btn').addEventListener('click', addCitizen);
-
-            // Управление окнами
-            setupWindowControls();
-        }
-
-        // Функция входа в систему
-        function login() {
-            const officerId = document.getElementById('login-id').value;
+            }, 300);
             
-            if (!officerId.trim()) {
-                showNotification('Ошибка: Введите идентификатор сотрудника');
+            // Render Laws
+            const lawContainer = document.getElementById('law-list');
+            LAWS.forEach(law => {
+                const div = document.createElement('div');
+                div.className = 'law-item';
+                div.innerHTML = `<span><b>${law.code} ${law.id}</b> ${law.text}</span> <small>${law.fine}$ / ${law.time}м</small>`;
+                div.onclick = () => toggleLaw(div, law);
+                lawContainer.appendChild(div);
+            });
+            
+            // Random Live Feed
+            setInterval(addRandomFeed, 8000);
+            updateClock();
+        };
+
+        function changeThemePreview(dept) {
+            const root = document.documentElement;
+            if(dept === 'MVD') root.style.setProperty('--theme-color', '#2f81f7');
+            if(dept === 'MCHS') root.style.setProperty('--theme-color', '#f85149');
+        }
+
+        function playSound(type) {
+            // В реальном проекте раскомментировать
+            // document.getElementById('sfx-' + type).play().catch(e => {});
+        }
+
+        function startSystem() {
+            const name = document.getElementById('auth-name').value;
+            const dept = document.getElementById('auth-dept').value;
+            
+            if(!name) { alert("Введите имя!"); return; }
+
+            CURRENT_USER.name = name;
+            CURRENT_USER.dept = dept;
+
+            // Apply Roles
+            if(dept === 'MVD') {
+                document.documentElement.style.setProperty('--theme-color', '#2f81f7');
+                document.querySelectorAll('.role-mchs').forEach(el => el.style.display = 'none');
+                document.getElementById('ui-dept').innerText = "POLICE DEPARTMENT";
+                document.getElementById('ui-dept').style.color = "#2f81f7";
+            } else {
+                document.documentElement.style.setProperty('--theme-color', '#f85149');
+                document.querySelectorAll('.role-mvd').forEach(el => el.style.display = 'none');
+                document.getElementById('ui-dept').innerText = "EMS / FIRE DEPT";
+                document.getElementById('ui-dept').style.color = "#f85149";
+            }
+
+            document.getElementById('ui-name').innerText = name;
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('app-interface').style.display = 'grid';
+            
+            playSound('boot');
+            showToast(`Добро пожаловать, ${name}`, 'info');
+            addToArchive("Начало смены. Вход в систему.");
+        }
+
+        // --- NAVIGATION ---
+        function openModule(id) {
+            playSound('click');
+            document.querySelectorAll('.module-page').forEach(m => m.classList.remove('active'));
+            document.querySelectorAll('nav li').forEach(l => l.classList.remove('active'));
+            
+            document.getElementById('mod-' + id).classList.add('active');
+            // Hacky active class toggle for list items
+            const navMap = {
+                'dashboard': 0, 'protocols': 1, 'search': 2, 'vehicles': 3,
+                'medical': 4, 'beds': 5, 'database': 6, 'archive': 7
+            };
+            // В реальном коде лучше через ID, тут упрощено
+        }
+
+        function setStatus(btn, text) {
+            document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active', 'busy'));
+            btn.classList.add(text === 'ЗАНЯТ' ? 'busy' : 'active');
+            showToast(`Статус обновлен: ${text}`);
+            addToArchive(`Смена статуса: ${text}`);
+        }
+
+        // --- MVD LOGIC ---
+        function toggleLaw(div, law) {
+            if(SELECTED_LAWS.includes(law)) {
+                SELECTED_LAWS = SELECTED_LAWS.filter(l => l !== law);
+                div.classList.remove('selected');
+            } else {
+                SELECTED_LAWS.push(law);
+                div.classList.add('selected');
+            }
+            calculatePunishment();
+        }
+
+        function calculatePunishment() {
+            let totalFine = 0;
+            let totalTime = 0;
+            SELECTED_LAWS.forEach(l => {
+                totalFine += l.fine;
+                totalTime += l.time;
+            });
+            document.getElementById('prot-result').value = `Штраф: ${totalFine}$ | Срок: ${totalTime} мес.`;
+        }
+
+        function submitProtocol() {
+            const name = document.getElementById('prot-name').value;
+            if(!name || SELECTED_LAWS.length === 0) {
+                alert("Заполните имя и выберите статьи!");
+                return;
+            }
+            const articles = SELECTED_LAWS.map(l => l.code + " " + l.id).join(", ");
+            const punishment = document.getElementById('prot-result').value;
+            
+            addToArchive(`ПРОТОКОЛ: ${name}. Статьи: ${articles}. ${punishment}`);
+            showToast("Протокол успешно загружен в базу", "success");
+            
+            // Clear form
+            document.getElementById('prot-name').value = "";
+            document.getElementById('prot-desc').value = "";
+            SELECTED_LAWS = [];
+            document.querySelectorAll('.law-item').forEach(el => el.classList.remove('selected'));
+            document.getElementById('prot-result').value = "";
+            
+            // Update Stats
+            let count = parseInt(document.getElementById('stat-reports').innerText);
+            document.getElementById('stat-reports').innerText = count + 1;
+        }
+
+        function searchCitizen() {
+            const query = document.getElementById('search-db-input').value.toLowerCase();
+            const container = document.getElementById('search-results');
+            container.innerHTML = "";
+            
+            if(query.length < 2) return;
+
+            const results = MOCK_CITIZENS.filter(c => c.name.toLowerCase().includes(query));
+            
+            if(results.length === 0) {
+                container.innerHTML = "<div style='padding:20px; color:#555'>Совпадений не найдено</div>";
                 return;
             }
 
-            currentOfficer = officerId;
-            
-            // Скрываем экран входа
-            document.getElementById('login-screen').style.display = 'none';
-            
-            // Показываем главный интерфейс
-            document.getElementById('main-interface').style.display = 'block';
-            document.getElementById('current-dept').textContent = currentDept;
-            
-            showNotification(`Добро пожаловать, ${officerId}. Подключение к ${currentDept} установлено.`);
-        }
-
-        // Функция выхода из системы
-        function logout() {
-            if (confirm('Завершить текущий сеанс работы?')) {
-                document.getElementById('main-interface').style.display = 'none';
-                document.getElementById('login-screen').style.display = 'flex';
-                showNotification(`Сеанс пользователя ${currentOfficer} завершен.`);
-            }
-        }
-
-        // Переключение между окнами
-        function switchWindow(windowId) {
-            // Скрыть все окна
-            document.querySelectorAll('.window').forEach(window => {
-                window.classList.remove('active');
+            results.forEach(c => {
+                let badgeClass = c.status === 'WANTED' ? 'badge-red' : (c.status === 'CLEAN' ? 'badge-green' : 'badge-blue');
+                let html = `
+                    <div class="card" style="border-left: 5px solid ${c.status === 'WANTED' ? 'red' : 'green'}">
+                        <div style="display:flex; justify-content:space-between;">
+                            <h3>${c.name} <span class="badge ${badgeClass}">${c.status}</span></h3>
+                            <span>Лицензии: ${c.lic}</span>
+                        </div>
+                        <p style="color:var(--text-muted)">${c.note}</p>
+                        <button class="btn-main" style="width:auto; font-size:12px; padding:5px 10px;">Открыть полное досье</button>
+                    </div>
+                `;
+                container.innerHTML += html;
             });
-            
-            // Показать выбранное окно
-            document.getElementById(`window-${windowId}`).classList.add('active');
-            
-            // Обновить активную кнопку в меню
-            document.querySelectorAll('.menu-item').forEach(item => {
-                item.classList.remove('active');
-            });
-            document.querySelector(`.menu-item[data-window="${windowId}"]`).classList.add('active');
-            
-            activeWindow = windowId;
         }
 
-        // Переключение терминала
-        function toggleTerminal() {
-            const terminal = document.getElementById('cmd-terminal');
-            terminal.style.display = terminal.style.display === 'flex' ? 'none' : 'flex';
-            if (terminal.style.display === 'flex') {
-                document.getElementById('cmd-input').focus();
-            }
-        }
-
-        // Обработка команд в терминале
-        function processCommand(cmd) {
-            const output = document.getElementById('cmd-output');
-            output.innerHTML += `> ${cmd}<br>`;
+        // --- EMS LOGIC ---
+        function submitMedical() {
+            const name = document.getElementById('med-name').value;
+            const triage = document.getElementById('med-triage').value;
             
-            cmd = cmd.trim().toLowerCase();
+            if(!name) return;
+
+            let color = "white";
+            if(triage === 'green') color = "#3fb950";
+            if(triage === 'yellow') color = "#d29922";
+            if(triage === 'red') color = "#f85149";
+
+            const table = document.getElementById('med-table-body');
+            const row = `<tr>
+                <td>${name}</td>
+                <td><span class="badge" style="background:${color}; color:black;">${triage.toUpperCase()} CODE</span></td>
+                <td>${new Date().toLocaleTimeString()}</td>
+            </tr>`;
             
-            if (cmd === 'help' || cmd === '?') {
-                output.innerHTML += `Доступные команды:<br>
-                - help - показать это сообщение<br>
-                - clear - очистить терминал<br>
-                - status - статус системы<br>
-                - time - текущее время<br>
-                - dept - текущее подразделение<br>
-                - user - текущий пользователь<br>
-                - scan [id] - проверить гражданина по ID<br>
-                - wanted [id] - объявить в розыск<br><br>`;
-            } 
-            else if (cmd === 'clear') {
-                output.innerHTML = '';
-            }
-            else if (cmd === 'status') {
-                output.innerHTML += `Статус: ОПЕРАТИВНЫЙ<br>
-                Подразделение: ${currentDept}<br>
-                Пользователь: ${currentOfficer}<br>
-                Активное окно: ${activeWindow}<br><br>`;
-            }
-            else if (cmd === 'time') {
-                const now = new Date();
-                output.innerHTML += `Текущее время: ${now.toLocaleTimeString('ru-RU')}<br><br>`;
-            }
-            else if (cmd === 'dept') {
-                output.innerHTML += `Текущее подразделение: ${currentDept}<br><br>`;
-            }
-            else if (cmd === 'user') {
-                output.innerHTML += `Текущий пользователь: ${currentOfficer}<br><br>`;
-            }
-            else if (cmd.startsWith('scan ')) {
-                const id = parseInt(cmd.substring(5));
-                const citizen = citizens.find(c => c.id === id);
-                if (citizen) {
-                    output.innerHTML += `Результат сканирования ID ${id}:<br>
-                    ФИО: ${citizen.name}<br>
-                    Лицензии: ${citizen.licenses}<br>
-                    Статус: ${citizen.status === 'wanted' ? 'В РОЗЫСКЕ' : 'ЧИСТ'}<br>
-                    Штрафы: ${citizen.fines} руб.<br><br>`;
-                } else {
-                    output.innerHTML += `Гражданин с ID ${id} не найден.<br><br>`;
-                }
-            }
-            else if (cmd.startsWith('wanted ')) {
-                const id = parseInt(cmd.substring(7));
-                const citizen = citizens.find(c => c.id === id);
-                if (citizen) {
-                    citizen.status = 'wanted';
-                    populateDatabase();
-                    output.innerHTML += `Гражданин ${citizen.name} объявлен в розыск.<br><br>`;
-                    showNotification(`Гражданин ${citizen.name} объявлен в розыск!`);
-                } else {
-                    output.innerHTML += `Гражданин с ID ${id} не найден.<br><br>`;
-                }
-            }
-            else if (cmd === '') {
-                // Пустая команда - ничего не делаем
-            }
-            else {
-                output.innerHTML += `Неизвестная команда: "${cmd}". Введите "help" для справки.<br><br>`;
-            }
+            table.innerHTML += row;
+            addToArchive(`ГОСПИТАЛИЗАЦИЯ: ${name} (Код: ${triage})`);
+            showToast("Пациент зарегистрирован");
+        }
+
+        // --- SYSTEM UTILS ---
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock').innerText = now.toLocaleTimeString();
+            setTimeout(updateClock, 1000);
+        }
+
+        function addRandomFeed() {
+            const messages = [
+                "10-55, Черный седан, район Миррор-Парк",
+                "Диспетчер: Всем юнитам, код 3, ограбление банка!",
+                "Поступил вызов: Пожар в жилом доме",
+                "Система: Обновление базы данных розыска...",
+                "Внимание: План перехват на шоссе Сенора"
+            ];
+            const msg = messages[Math.floor(Math.random() * messages.length)];
+            const feed = document.getElementById('live-feed');
+            feed.innerHTML = `<div>[${new Date().toLocaleTimeString()}] ${msg}</div>` + feed.innerHTML;
+        }
+
+        function addToArchive(text) {
+            const time = new Date().toLocaleTimeString();
+            SESSION_LOGS.push(`[${time}] ${text}`);
             
-            // Прокрутка вниз
-            output.scrollTop = output.scrollHeight;
+            const container = document.getElementById('archive-content');
+            container.innerHTML = SESSION_LOGS.map(l => `<div style="padding:5px; border-bottom:1px solid #333;">${l}</div>`).join('');
         }
 
-        // Поиск в базе данных
-        function searchDatabase() {
-            const query = document.getElementById('search-input').value.toLowerCase();
-            const tbody = document.getElementById('db-table-body');
-            const rows = tbody.querySelectorAll('tr');
+        function showToast(text, type='info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerHTML = `<i class="fas fa-info-circle"></i> ${text}`;
+            container.appendChild(toast);
             
-            rows.forEach(row => {
-                const text = row.textContent.toLowerCase();
-                row.style.display = text.includes(query) ? '' : 'none';
-            });
-            
-            if (query) {
-                showNotification(`Поиск выполнен. Найдено ${Array.from(rows).filter(r => r.style.display !== 'none').length} записей.`);
-            }
-        }
+            playSound('alert');
 
-        // Добавление нового гражданина
-        function addCitizen() {
-            const name = prompt('Введите ФИО нового гражданина:');
-            if (name) {
-                const newId = citizens.length > 0 ? Math.max(...citizens.map(c => c.id)) + 1 : 1;
-                citizens.push({
-                    id: newId,
-                    name: name,
-                    licenses: "A",
-                    status: "clean",
-                    fines: 0
-                });
-                populateDatabase();
-                showNotification(`Гражданин ${name} добавлен в базу данных. ID: ${newId}`);
-            }
-        }
-
-        // Функции для кнопок действий
-        function showCitizenDetails(id) {
-            const citizen = citizens.find(c => c.id === id);
-            if (citizen) {
-                alert(`ДЕТАЛИ ГРАЖДАНИНА:\n\nID: ${citizen.id}\nФИО: ${citizen.name}\nЛицензии: ${citizen.licenses}\nСтатус: ${citizen.status === 'wanted' ? 'В РОЗЫСКЕ' : citizen.status === 'suspended' ? 'ЛИШЕН ПРАВ' : 'ЧИСТ'}\nНакопленные штрафы: ${citizen.fines} руб.`);
-            }
-        }
-
-        function issueFine(id) {
-            const citizen = citizens.find(c => c.id === id);
-            if (citizen) {
-                const amount = prompt(`Выписать штраф для ${citizen.name}:\nТекущий долг: ${citizen.fines} руб.`, "1000");
-                if (amount && !isNaN(amount)) {
-                    citizen.fines += parseInt(amount);
-                    populateDatabase();
-                    showNotification(`Гражданину ${citizen.name} выписан штраф ${amount} руб. Общий долг: ${citizen.fines} руб.`);
-                }
-            }
-        }
-
-        function setWanted(id) {
-            const citizen = citizens.find(c => c.id === id);
-            if (citizen && confirm(`Объявить гражданина ${citizen.name} в розыск?`)) {
-                citizen.status = 'wanted';
-                populateDatabase();
-                showNotification(`ГРАЖДАНИН ${citizen.name} ОБЪЯВЛЕН В РОЗЫСК!`, true);
-            }
-        }
-
-        function removeWanted(id) {
-            const citizen = citizens.find(c => c.id === id);
-            if (citizen && confirm(`Снять гражданина ${citizen.name} с розыска?`)) {
-                citizen.status = 'clean';
-                populateDatabase();
-                showNotification(`Гражданин ${citizen.name} снят с розыска.`);
-            }
-        }
-
-        // Настройка управления окнами (перетаскивание, кнопки)
-        function setupWindowControls() {
-            // Обработчики для кнопок окон
-            document.querySelectorAll('.window-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const action = this.getAttribute('data-action');
-                    const window = this.closest('.window');
-                    
-                    if (action === 'minimize') {
-                        window.style.display = 'none';
-                    } else if (action === 'maximize') {
-                        if (window.style.width === '90vw' && window.style.height === '90vh') {
-                            window.style.width = '';
-                            window.style.height = '';
-                            window.style.left = '';
-                            window.style.top = '';
-                        } else {
-                            window.style.width = '90vw';
-                            window.style.height = '90vh';
-                            window.style.left = '5%';
-                            window.style.top = '5%';
-                        }
-                    } else if (action === 'close') {
-                        if (window.id === 'window-db') {
-                            alert('Окно базы данных нельзя закрыть. Используйте кнопку свернуть.');
-                        } else {
-                            window.style.display = 'none';
-                        }
-                    }
-                });
-            });
-
-            // Перетаскивание окон
-            document.querySelectorAll('.window-header').forEach(header => {
-                header.addEventListener('mousedown', startDrag);
-            });
-
-            document.addEventListener('mousemove', drag);
-            document.addEventListener('mouseup', stopDrag);
-        }
-
-        function startDrag(e) {
-            if (e.target.classList.contains('window-btn')) return;
-            
-            draggedWindow = e.target.closest('.window');
-            const rect = draggedWindow.getBoundingClientRect();
-            dragOffset.x = e.clientX - rect.left;
-            dragOffset.y = e.clientY - rect.top;
-            
-            draggedWindow.style.zIndex = 100;
-        }
-
-        function drag(e) {
-            if (!draggedWindow) return;
-            
-            draggedWindow.style.left = (e.clientX - dragOffset.x) + 'px';
-            draggedWindow.style.top = (e.clientY - dragOffset.y) + 'px';
-        }
-
-        function stopDrag() {
-            if (draggedWindow) {
-                draggedWindow.style.zIndex = 1;
-                draggedWindow = null;
-            }
-        }
-
-        // Показать уведомление
-        function showNotification(message, isImportant = false) {
-            const notification = document.getElementById('notification');
-            document.getElementById('notification-text').textContent = message;
-            
-            if (isImportant) {
-                notification.style.backgroundColor = '#330000';
-                notification.style.borderColor = '#ff0000';
-                notification.style.color = '#ffaaaa';
-            } else {
-                notification.style.backgroundColor = '#002200';
-                notification.style.borderColor = '#00aa00';
-                notification.style.color = '#00ff00';
-            }
-            
-            notification.classList.add('show');
-            
             setTimeout(() => {
-                notification.classList.remove('show');
-            }, 5000);
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
         }
 
-        // Экспортируем функции для использования в HTML
-        window.showCitizenDetails = showCitizenDetails;
-        window.issueFine = issueFine;
-        window.setWanted = setWanted;
-        window.removeWanted = removeWanted;
+        function copyReport() {
+            const text = SESSION_LOGS.join('\n');
+            navigator.clipboard.writeText(text);
+            showToast("Отчет скопирован в буфер обмена!");
+        }
     </script>
 </body>
 </html>
