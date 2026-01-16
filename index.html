@@ -3,683 +3,598 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GOS.OS | Единая Система Управления</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <title>OMEGA GOV SYSTEM v5.0</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* =========================================
-           CORE STYLES & VARIABLES
-           ========================================= */
+        /* --- CORE VARIABLES --- */
         :root {
-            /* Palette */
-            --bg-dark: #0f1115;
-            --bg-panel: #161b22;
-            --bg-input: #0d1117;
-            --border-color: #30363d;
+            --bg-deep: #050505;
+            --bg-panel: #101010;
+            --bg-surface: #1a1a1a;
             
-            /* Accents */
-            --primary-mvd: #2f81f7; /* Police Blue */
-            --primary-mchs: #f85149; /* Medic Red */
-            --accent-success: #238636;
-            --accent-warning: #d29922;
-            --text-main: #c9d1d9;
-            --text-muted: #8b949e;
+            --border-light: #333;
+            --border-focus: #555;
 
-            /* Effects */
-            --glass: rgba(22, 27, 34, 0.85);
-            --shadow-card: 0 10px 30px rgba(0,0,0,0.5);
+            /* MVD THEME (Default) */
+            --accent: #3b82f6; 
+            --accent-glow: rgba(59, 130, 246, 0.4);
             
-            /* Current Theme (Changed via JS) */
-            --theme-color: var(--primary-mvd); 
+            --text-main: #e5e5e5;
+            --text-muted: #888;
+            
+            --status-ok: #10b981;
+            --status-warn: #f59e0b;
+            --status-danger: #ef4444;
+
+            --font-ui: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            --font-mono: 'Courier New', Courier, monospace;
         }
 
-        * { box-sizing: border-box; outline: none; }
+        /* --- GLOBAL RESET --- */
+        * { box-sizing: border-box; outline: none; user-select: none; }
+        body {
+            margin: 0; background: var(--bg-deep); color: var(--text-main);
+            font-family: var(--font-ui); height: 100vh; overflow: hidden;
+            display: flex; flex-direction: column;
+        }
         
-        body, html {
-            margin: 0; padding: 0; height: 100vh;
-            font-family: 'Segoe UI', 'Roboto', Helvetica, Arial, sans-serif;
-            background-color: var(--bg-dark);
-            color: var(--text-main);
-            overflow: hidden;
+        /* SCROLLBARS */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-deep); }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+        /* --- UTILS --- */
+        .hidden { display: none !important; }
+        .flex { display: flex; }
+        .center { align-items: center; justify-content: center; }
+        .col { flex-direction: column; }
+        .gap-10 { gap: 10px; }
+        .gap-20 { gap: 20px; }
+        .bold { font-weight: 700; }
+        
+        .btn {
+            background: var(--bg-surface); border: 1px solid var(--border-light);
+            color: var(--text-main); padding: 8px 16px; border-radius: 4px;
+            cursor: pointer; transition: 0.2s; font-size: 0.9rem;
+            display: inline-flex; align-items: center; gap: 8px;
         }
+        .btn:hover { border-color: var(--accent); color: var(--accent); }
+        .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .btn-primary:hover { filter: brightness(1.1); color: #fff; box-shadow: 0 0 15px var(--accent-glow); }
+        
+        .input {
+            background: #000; border: 1px solid var(--border-light); color: #fff;
+            padding: 10px; border-radius: 4px; width: 100%; font-family: inherit;
+        }
+        .input:focus { border-color: var(--accent); }
 
-        /* Scrollbar styling */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: var(--bg-dark); }
-        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--theme-color); }
-
-        /* =========================================
-           BOOT & LOGIN SCREEN
-           ========================================= */
-        #boot-screen, #login-screen {
+        /* --- LOGIN SCREEN --- */
+        #login-overlay {
             position: fixed; inset: 0; z-index: 9999;
             background: #000;
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
+            background-image: radial-gradient(circle at center, #111 0%, #000 70%);
+        }
+        .login-box {
+            width: 400px; padding: 40px; background: rgba(20,20,20,0.9);
+            border: 1px solid #333; border-radius: 8px;
+            box-shadow: 0 0 50px rgba(0,0,0,0.8); backdrop-filter: blur(10px);
         }
 
-        .boot-log {
-            font-family: 'Consolas', monospace; color: #33ff33;
-            width: 80%; max-width: 600px; font-size: 14px;
-        }
-
-        .login-card {
-            background: var(--bg-panel); padding: 40px; width: 400px;
-            border: 1px solid var(--border-color); border-radius: 8px;
-            box-shadow: 0 0 50px rgba(47, 129, 247, 0.1);
-            position: relative; overflow: hidden;
-        }
-
-        .login-card::before {
-            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
-            background: linear-gradient(90deg, transparent, var(--theme-color), transparent);
-        }
-
-        .login-title { font-size: 24px; font-weight: 300; margin-bottom: 20px; text-align: center; letter-spacing: 2px; }
+        /* --- MAIN LAYOUT --- */
+        #app { display: flex; height: 100%; width: 100%; opacity: 0; transition: opacity 1s; }
         
-        /* Form Elements */
-        .form-group { margin-bottom: 20px; text-align: left; }
-        .form-label { font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 8px; text-transform: uppercase; }
-        
-        .input-control {
-            width: 100%; background: var(--bg-input); border: 1px solid var(--border-color);
-            color: white; padding: 12px; border-radius: 6px; transition: 0.3s;
-            font-family: inherit; font-size: 14px;
-        }
-        .input-control:focus { border-color: var(--theme-color); box-shadow: 0 0 0 3px rgba(47, 129, 247, 0.1); }
-
-        .btn-main {
-            width: 100%; background: var(--theme-color); color: white; border: none;
-            padding: 14px; border-radius: 6px; font-weight: 600; cursor: pointer;
-            text-transform: uppercase; letter-spacing: 1px; transition: 0.3s;
-        }
-        .btn-main:hover { filter: brightness(1.1); transform: translateY(-2px); }
-
-        /* =========================================
-           MAIN INTERFACE LAYOUT
-           ========================================= */
-        #app-interface { display: none; height: 100vh; grid-template-columns: 260px 1fr; }
-
-        /* Sidebar */
+        /* SIDEBAR */
         aside {
-            background: var(--bg-panel); border-right: 1px solid var(--border-color);
-            display: flex; flex-direction: column; padding: 20px 0;
+            width: 260px; background: var(--bg-panel); border-right: 1px solid var(--border-light);
+            display: flex; flex-direction: column; flex-shrink: 0;
         }
+        .profile-sec { padding: 20px; border-bottom: 1px solid var(--border-light); background: rgba(255,255,255,0.02); }
+        .nav-menu { flex: 1; padding: 10px; overflow-y: auto; }
+        .nav-item {
+            padding: 12px 15px; margin-bottom: 5px; border-radius: 6px;
+            color: var(--text-muted); cursor: pointer; transition: 0.2s;
+            display: flex; align-items: center; gap: 12px; font-weight: 500;
+        }
+        .nav-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
+        .nav-item.active { background: var(--accent); color: #fff; box-shadow: 0 4px 12px var(--accent-glow); }
 
-        .user-block {
-            padding: 0 20px 20px; border-bottom: 1px solid var(--border-color);
-            margin-bottom: 10px;
-        }
-        .user-rank { font-size: 12px; color: var(--theme-color); font-weight: bold; }
-        .user-name { font-size: 16px; font-weight: 600; margin-top: 5px; }
-
-        nav ul { list-style: none; padding: 0; margin: 0; }
-        nav li {
-            padding: 15px 25px; cursor: pointer; color: var(--text-muted);
-            display: flex; align-items: center; gap: 12px; transition: 0.2s;
-            border-left: 3px solid transparent;
-        }
-        nav li:hover { background: rgba(255,255,255,0.03); color: white; }
-        nav li.active {
-            background: rgba(47, 129, 247, 0.05); color: white;
-            border-left-color: var(--theme-color);
-        }
-        nav li i { width: 20px; text-align: center; }
-
-        /* Status Controls */
-        .status-panel { margin-top: auto; padding: 20px; border-top: 1px solid var(--border-color); }
-        .status-btn {
-            font-size: 11px; padding: 8px; width: 100%; margin-bottom: 5px;
-            background: transparent; border: 1px solid var(--border-color); color: var(--text-muted);
-            cursor: pointer; border-radius: 4px; text-align: left;
-        }
-        .status-btn.active { background: var(--accent-success); border-color: var(--accent-success); color: white; }
-        .status-btn.busy { background: var(--accent-warning); border-color: var(--accent-warning); color: #000; }
-
-        /* Main Content */
-        main { display: flex; flex-direction: column; overflow: hidden; position: relative; }
+        /* CENTER CONTENT */
+        main { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
         
         header {
-            height: 60px; border-bottom: 1px solid var(--border-color);
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 0 30px; background: var(--bg-panel);
+            height: 60px; background: var(--bg-panel); border-bottom: 1px solid var(--border-light);
+            display: flex; align-items: center; justify-content: space-between; padding: 0 20px;
         }
+        .top-stat { font-family: var(--font-mono); font-size: 0.85rem; color: var(--accent); }
 
-        .clock-widget { font-variant-numeric: tabular-nums; font-weight: bold; font-size: 18px; }
-        .department-badge { 
-            padding: 5px 12px; background: var(--border-color); 
-            border-radius: 20px; font-size: 12px; font-weight: bold; 
-        }
-
-        /* Modules */
-        .workspace { padding: 30px; overflow-y: auto; height: calc(100vh - 60px); }
-        .module-page { display: none; animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
-        .module-page.active { display: block; }
+        .workspace { padding: 20px; overflow-y: auto; height: 100%; background: var(--bg-deep); }
         
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+        /* RIGHT PANEL (RADIO) */
+        .radio-panel {
+            width: 280px; background: var(--bg-panel); border-left: 1px solid var(--border-light);
+            display: flex; flex-direction: column; flex-shrink: 0;
         }
-
-        /* =========================================
-           COMPONENTS
-           ========================================= */
-        .card {
-            background: var(--bg-panel); border: 1px solid var(--border-color);
-            border-radius: 8px; padding: 25px; margin-bottom: 25px;
-        }
+        .radio-feed { flex: 1; overflow-y: auto; padding: 10px; font-family: var(--font-mono); font-size: 0.75rem; }
+        .radio-msg { margin-bottom: 8px; padding: 8px; background: rgba(0,0,0,0.3); border-left: 2px solid #333; }
+        .radio-msg.priority { border-left-color: var(--status-danger); background: rgba(239, 68, 68, 0.1); }
         
-        .card-title {
-            margin-top: 0; margin-bottom: 20px; font-size: 18px;
-            display: flex; align-items: center; gap: 10px;
-            padding-bottom: 15px; border-bottom: 1px solid var(--border-color);
-        }
+        /* --- MODULES & CARDS --- */
+        .module { display: none; animation: fadeIn 0.3s; }
+        .module.active { display: block; }
+        @keyframes fadeIn { from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:translateY(0)} }
 
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
 
-        /* Tables */
-        .data-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-        .data-table th { text-align: left; color: var(--text-muted); padding: 12px; border-bottom: 2px solid var(--border-color); }
-        .data-table td { padding: 12px; border-bottom: 1px solid var(--border-color); color: var(--text-main); }
-        .data-table tr:hover td { background: rgba(255,255,255,0.02); }
-
-        /* Badges */
-        .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
-        .badge-red { background: rgba(248, 81, 73, 0.2); color: #ff7b72; border: 1px solid rgba(248, 81, 73, 0.4); }
-        .badge-green { background: rgba(35, 134, 54, 0.2); color: #3fb950; border: 1px solid rgba(35, 134, 54, 0.4); }
-        .badge-blue { background: rgba(56, 139, 253, 0.2); color: #58a6ff; border: 1px solid rgba(56, 139, 253, 0.4); }
-
-        /* Law Selector */
-        .law-selector {
-            max-height: 200px; overflow-y: auto; background: var(--bg-input);
-            border: 1px solid var(--border-color); border-radius: 6px; padding: 10px;
+        .card {
+            background: var(--bg-surface); border: 1px solid var(--border-light);
+            border-radius: 6px; padding: 20px; margin-bottom: 20px;
         }
-        .law-item {
-            padding: 8px; cursor: pointer; border-radius: 4px; font-size: 13px;
-            display: flex; justify-content: space-between;
+        .card-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 15px; border-bottom: 1px solid var(--border-light); padding-bottom: 10px;
         }
-        .law-item:hover { background: rgba(255,255,255,0.1); }
-        .law-item.selected { background: var(--theme-color); color: white; }
+        .card h3 { margin: 0; font-size: 1rem; color: var(--text-main); text-transform: uppercase; letter-spacing: 1px; }
 
-        /* Notification Toast */
-        #toast-container { position: fixed; bottom: 30px; right: 30px; display: flex; flex-direction: column; gap: 10px; }
-        .toast {
-            background: var(--bg-panel); border-left: 4px solid var(--theme-color);
-            padding: 15px 25px; border-radius: 4px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            display: flex; align-items: center; gap: 15px; color: white; min-width: 300px;
-            animation: slideInRight 0.3s;
+        /* DB TABLES */
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th { text-align: left; padding: 10px; color: var(--text-muted); border-bottom: 1px solid var(--border-light); }
+        td { padding: 10px; border-bottom: 1px solid #222; }
+        tr:hover td { background: rgba(255,255,255,0.02); cursor: pointer; }
+        
+        /* TAGS */
+        .tag { padding: 2px 6px; border-radius: 3px; font-size: 0.7rem; font-weight: bold; }
+        .tag-red { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+        .tag-green { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; }
+        
+        /* MAP PLACEHOLDER */
+        .map-container {
+            width: 100%; height: 400px; background: #0c0c0c;
+            border: 1px solid var(--border-light); position: relative;
+            background-image: 
+                linear-gradient(rgba(20,20,20,0.8), rgba(20,20,20,0.8)),
+                url('https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Los_Angeles_map.png/640px-Los_Angeles_map.png');
+            background-size: cover; background-position: center;
         }
-        @keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
+        .blip {
+            width: 8px; height: 8px; background: var(--accent); border-radius: 50%;
+            position: absolute; box-shadow: 0 0 10px var(--accent);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0% {box-shadow: 0 0 0 0 var(--accent-glow);} 70% {box-shadow: 0 0 0 10px transparent;} 100% {box-shadow: 0 0 0 0 transparent;} }
 
-        /* Quick Search Big Input */
-        .big-search { font-size: 24px; padding: 20px; }
+        /* MODAL */
+        #modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 500;
+            display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px);
+        }
+        .modal-content {
+            width: 600px; max-height: 80vh; overflow-y: auto; background: var(--bg-panel);
+            border: 1px solid var(--border-light); border-radius: 8px; padding: 0;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+        }
+        .modal-header { padding: 20px; background: var(--bg-surface); border-bottom: 1px solid var(--border-light); display: flex; justify-content: space-between; }
+        .modal-body { padding: 20px; }
 
     </style>
 </head>
 <body>
 
-    <audio id="sfx-boot" src="https://www.soundjay.com/buttons/beep-01a.mp3"></audio>
-    <audio id="sfx-click" src="https://www.soundjay.com/buttons/button-16.mp3"></audio>
-    <audio id="sfx-alert" src="https://www.soundjay.com/mechanical/sounds/mechanical-clank-1.mp3"></audio>
-
-    <div id="boot-screen">
-        <div class="boot-log" id="boot-log-text"></div>
-    </div>
-
-    <div id="login-screen" style="display:none;">
-        <div class="login-card">
-            <h2 class="login-title">GOS.OS <span style="font-size:12px; opacity:0.5;">v4.2.1</span></h2>
+    <div id="login-overlay" class="flex center col">
+        <div class="login-box">
+            <h1 style="text-align: center; margin-bottom: 5px; color: var(--accent);">OMEGA <span style="font-weight:300; color:#fff;">SYSTEM</span></h1>
+            <p style="text-align: center; color: var(--text-muted); margin-bottom: 30px; font-size: 0.8rem;">GOVERNMENT SECURE ACCESS v5.0</p>
             
-            <div class="form-group">
-                <label class="form-label">Идентификатор сотрудника</label>
-                <input type="text" class="input-control" id="auth-name" placeholder="Фамилия И.О.">
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Департамент</label>
-                <select class="input-control" id="auth-dept" onchange="changeThemePreview(this.value)">
-                    <option value="MVD">МВД / Полиция / ГИБДД</option>
-                    <option value="MCHS">МЧС / Скорая Помощь</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Код доступа</label>
-                <input type="password" class="input-control" value="12345">
-            </div>
-
-            <button class="btn-main" onclick="startSystem()">Войти в систему</button>
+            <label style="font-size: 0.8rem; color: #888;">ИДЕНТИФИКАЦИЯ</label>
+            <input type="text" id="login-user" class="input" placeholder="Фамилия Инициалы" style="margin-bottom: 15px;">
+            
+            <label style="font-size: 0.8rem; color: #888;">ПОДРАЗДЕЛЕНИЕ</label>
+            <select id="login-dept" class="input" style="margin-bottom: 25px;">
+                <option value="LSPD">МВД (Полиция)</option>
+                <option value="EMS">МЧС (Медицина)</option>
+            </select>
+            
+            <button class="btn btn-primary" style="width: 100%; justify-content: center;" onclick="bootSystem()">ВОЙТИ В СЕТЬ</button>
+        </div>
+        <div style="margin-top: 20px; font-family: var(--font-mono); font-size: 0.7rem; color: #444;">
+            AUTHORIZED PERSONNEL ONLY // CLASSIFIED
         </div>
     </div>
 
-    <div id="app-interface">
+    <div id="app">
         <aside>
-            <div class="user-block">
-                <div class="user-rank" id="ui-rank">СЕРЖАНТ</div>
-                <div class="user-name" id="ui-name">Иванов И.И.</div>
+            <div class="profile-sec">
+                <div style="font-size: 1.2rem; font-weight: bold;" id="ui-user">USER</div>
+                <div style="font-size: 0.8rem; color: var(--accent);" id="ui-dept">DEPARTMENT</div>
+                <div style="margin-top: 10px; display: flex; gap: 5px;">
+                    <button class="btn" style="padding: 4px 8px; font-size: 0.7rem; background: var(--status-ok); color: #000; border:none;">10-8</button>
+                    <button class="btn" style="padding: 4px 8px; font-size: 0.7rem; background: var(--status-warn); color: #000; border:none;">10-6</button>
+                </div>
             </div>
-            
-            <nav id="nav-menu">
-                <ul>
-                    <li onclick="openModule('dashboard')" class="active"><i class="fas fa-home"></i> Сводка</li>
-                    <li class="role-mvd" onclick="openModule('protocols')"><i class="fas fa-file-contract"></i> Протоколы</li>
-                    <li class="role-mvd" onclick="openModule('search')"><i class="fas fa-search"></i> База граждан</li>
-                    <li class="role-mvd" onclick="openModule('vehicles')"><i class="fas fa-car"></i> Авто-поиск</li>
-                    <li class="role-mchs" onclick="openModule('medical')"><i class="fas fa-notes-medical"></i> Карты пациентов</li>
-                    <li class="role-mchs" onclick="openModule('beds')"><i class="fas fa-procedures"></i> Коечный фонд</li>
-                    <li onclick="openModule('database')"><i class="fas fa-book"></i> База Знаний</li>
-                    <li onclick="openModule('archive')"><i class="fas fa-history"></i> Архив Смены</li>
-                </ul>
-            </nav>
+            <nav class="nav-menu">
+                <div class="nav-item active" onclick="nav('dash')"><i class="fas fa-chart-pie"></i> Главная</div>
+                <div class="nav-item" onclick="nav('map')"><i class="fas fa-map-marked-alt"></i> Карта штата</div>
+                
+                <div class="mvd-only">
+                    <div style="margin: 15px 0 5px 15px; font-size: 0.7rem; color: #555; font-weight: bold;">ПОЛИЦЕЙСКИЕ МОДУЛИ</div>
+                    <div class="nav-item" onclick="nav('search')"><i class="fas fa-user-shield"></i> База Граждан</div>
+                    <div class="nav-item" onclick="nav('vehicles')"><i class="fas fa-car"></i> Поиск Авто</div>
+                    <div class="nav-item" onclick="nav('warrants')"><i class="fas fa-gavel"></i> Ордера / Розыск</div>
+                    <div class="nav-item" onclick="nav('protocol')"><i class="fas fa-file-contract"></i> Протокол</div>
+                </div>
 
-            <div class="status-panel">
-                <label class="form-label">Мой Статус</label>
-                <button class="status-btn active" onclick="setStatus(this, 'ДОСТУПЕН')">10-8 Доступен</button>
-                <button class="status-btn" onclick="setStatus(this, 'ВЫЕХАЛ')">10-5 В пути</button>
-                <button class="status-btn busy" onclick="setStatus(this, 'ЗАНЯТ')">10-6 Занят</button>
-            </div>
+                <div class="ems-only hidden">
+                    <div style="margin: 15px 0 5px 15px; font-size: 0.7rem; color: #555; font-weight: bold;">МЕДИЦИНСКИЕ МОДУЛИ</div>
+                    <div class="nav-item" onclick="nav('patients')"><i class="fas fa-procedures"></i> Реестр Пациентов</div>
+                    <div class="nav-item" onclick="nav('calls')"><i class="fas fa-ambulance"></i> Активные Вызовы</div>
+                </div>
+                
+                <div style="margin-top: auto;">
+                    <div class="nav-item" onclick="location.reload()"><i class="fas fa-sign-out-alt"></i> Выход</div>
+                </div>
+            </nav>
         </aside>
 
         <main>
             <header>
-                <div class="department-badge" id="ui-dept">DEPT</div>
-                <div style="flex-grow:1; text-align:center; font-weight:600; letter-spacing:1px; opacity:0.7;">
-                    SECURE CONNECTION ESTABLISHED
+                <div style="display:flex; gap: 20px; align-items: center;">
+                    <i class="fas fa-shield-alt" style="font-size: 1.5rem; color: var(--accent);"></i>
+                    <span style="font-weight: bold; letter-spacing: 1px;">GOV.OS <span style="opacity: 0.5;">v5.0</span></span>
                 </div>
-                <div class="clock-widget" id="clock">00:00:00</div>
+                <div class="flex center gap-20">
+                    <span class="top-stat"><i class="fas fa-clock"></i> <span id="clock">12:00</span></span>
+                    <span class="top-stat"><i class="fas fa-cloud"></i> +18°C</span>
+                    <span class="top-stat" style="color: var(--status-ok);">● ONLINE</span>
+                </div>
             </header>
 
             <div class="workspace">
                 
-                <div id="mod-dashboard" class="module-page active">
-                    <h2 class="card-title">Оперативная обстановка</h2>
-                    
-                    <div class="grid-3">
-                        <div class="card" style="text-align:center;">
-                            <h1 style="font-size:40px; margin:0; color:var(--theme-color);" id="stat-calls">0</h1>
-                            <span class="form-label">Вызовов за смену</span>
+                <div id="mod-dash" class="module active">
+                    <div class="grid-4">
+                        <div class="card" style="text-align: center;">
+                            <h1 style="color: var(--accent); font-size: 2.5rem; margin: 0;">12</h1>
+                            <div style="font-size: 0.8rem; color: #777;">АКТИВНЫЕ ЮНИТЫ</div>
                         </div>
-                        <div class="card" style="text-align:center;">
-                            <h1 style="font-size:40px; margin:0; color:var(--accent-warning);" id="stat-reports">0</h1>
-                            <span class="form-label">Оформлено отчетов</span>
+                        <div class="card" style="text-align: center;">
+                            <h1 style="color: var(--status-danger); font-size: 2.5rem; margin: 0;">5</h1>
+                            <div style="font-size: 0.8rem; color: #777;">КОД 3 (ВЫЗОВЫ)</div>
                         </div>
-                        <div class="card" style="text-align:center;">
-                            <h1 style="font-size:40px; margin:0; color:var(--accent-success);">A+</h1>
-                            <span class="form-label">Эффективность</span>
+                        <div class="card" style="text-align: center;">
+                            <h1 style="color: #fff; font-size: 2.5rem; margin: 0;">142</h1>
+                            <div style="font-size: 0.8rem; color: #777;">ПРОТОКОЛОВ ЗА 24Ч</div>
+                        </div>
+                        <div class="card" style="text-align: center;">
+                            <h1 style="color: var(--status-warn); font-size: 2.5rem; margin: 0;">8</h1>
+                            <div style="font-size: 0.8rem; color: #777;">В РОЗЫСКЕ</div>
                         </div>
                     </div>
 
-                    <div class="card">
-                        <h3 class="card-title"><i class="fas fa-broadcast-tower"></i> Прямая трансляция диспетчера</h3>
-                        <div style="height:150px; overflow-y:auto; font-family:'Consolas', monospace; font-size:13px; color:#aaa;" id="live-feed">
-                            </div>
-                    </div>
-                </div>
-
-                <div id="mod-protocols" class="module-page">
-                    <div class="card">
-                        <h3 class="card-title"><i class="fas fa-pen-alt"></i> Составить протокол</h3>
-                        <div class="grid-2">
-                            <div>
-                                <div class="form-group">
-                                    <label class="form-label">Гражданин</label>
-                                    <input type="text" class="input-control" id="prot-name" placeholder="ФИО нарушителя">
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Паспортные данные / ID</label>
-                                    <input type="text" class="input-control" id="prot-id" placeholder="XX-XXXXXX">
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Выберите статьи (УК/КоАП)</label>
-                                    <div class="law-selector" id="law-list">
-                                        </div>
-                                </div>
-                            </div>
-                            <div>
-                                <div class="form-group">
-                                    <label class="form-label">Описание ситуации</label>
-                                    <textarea class="input-control" rows="5" id="prot-desc"></textarea>
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Итоговая мера</label>
-                                    <input type="text" class="input-control" id="prot-result" placeholder="Штраф / Срок (рассчитывается автоматически)" readonly>
-                                </div>
-                                <button class="btn-main" onclick="submitProtocol()">Зарегистрировать протокол</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="mod-search" class="module-page">
-                    <div class="card">
-                        <input type="text" class="input-control big-search" placeholder="Поиск: ФИО, Номер телефона, ID..." id="search-db-input" onkeyup="searchCitizen()">
-                    </div>
-                    <div id="search-results">
-                        </div>
-                </div>
-
-                <div id="mod-medical" class="module-page">
                     <div class="grid-2">
                         <div class="card">
-                            <h3 class="card-title">Создание карты вызова</h3>
-                            <div class="form-group">
-                                <label class="form-label">Пациент</label>
-                                <input type="text" class="input-control" id="med-name">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Жалобы (Анамнез)</label>
-                                <textarea class="input-control" rows="3" id="med-anamnesis"></textarea>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Код срочности (Триаж)</label>
-                                <select class="input-control" id="med-triage">
-                                    <option value="green">ЗЕЛЕНЫЙ (Легкий)</option>
-                                    <option value="yellow">ЖЕЛТЫЙ (Средний)</option>
-                                    <option value="red">КРАСНЫЙ (Тяжелый/Реанимация)</option>
-                                    <option value="black">ЧЕРНЫЙ (Летальный)</option>
-                                </select>
-                            </div>
-                            <button class="btn-main" onclick="submitMedical()" style="background: var(--primary-mchs)">Оформить карту</button>
+                            <div class="card-header"><h3><i class="fas fa-bullhorn"></i> ОРИЕНТИРОВКИ (BOLO)</h3></div>
+                            <div id="bolo-list">
+                                </div>
                         </div>
                         <div class="card">
-                            <h3 class="card-title">Активные пациенты</h3>
-                            <table class="data-table">
-                                <thead><tr><th>Имя</th><th>Статус</th><th>Время</th></tr></thead>
-                                <tbody id="med-table-body"></tbody>
-                            </table>
+                            <div class="card-header"><h3><i class="fas fa-newspaper"></i> НОВОСТИ ДЕПАРТАМЕНТА</h3></div>
+                            <div style="font-size: 0.9rem; line-height: 1.5; color: #aaa;">
+                                <p><span style="color: var(--accent);">[ВАЖНО]</span> Обновление протоколов задержания. Ознакомиться всем сотрудникам.</p>
+                                <p><span style="color: #fff;">[ИНФО]</span> В районе Сэнди-Шорс замечена активность ОПГ.</p>
+                                <p><span style="color: #fff;">[СИСТЕМА]</span> Технические работы на сервере 22.01 в 04:00.</p>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div id="mod-archive" class="module-page">
-                    <h2 class="card-title">Архив действий смены</h2>
-                    <div class="card" id="archive-content">
-                        <p style="text-align:center; color:gray">Записей пока нет.</p>
+                <div id="mod-map" class="module">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>GPS ТРЕКЕР ЮНИТОВ</h3>
+                            <div class="flex gap-10">
+                                <span class="tag tag-green">ЮНИТЫ</span>
+                                <span class="tag tag-red">ВЫЗОВЫ</span>
+                            </div>
+                        </div>
+                        <div class="map-container" id="map-box">
+                            </div>
                     </div>
-                    <button class="input-control" onclick="copyReport()" style="width:auto; float:right;">Скопировать отчет для Discord</button>
+                </div>
+
+                <div id="mod-search" class="module">
+                    <div class="card">
+                        <div class="flex gap-10">
+                            <input type="text" id="search-input" class="input" placeholder="Введите Имя, Фамилию или ID..." style="font-size: 1.1rem;">
+                            <button class="btn btn-primary" onclick="performSearch()">ПОИСК</button>
+                        </div>
+                    </div>
+                    <div id="search-results" class="grid-3">
+                        </div>
+                </div>
+
+                <div id="mod-vehicles" class="module">
+                    <div class="card">
+                        <h3>ПОИСК ТРАНСПОРТНОГО СРЕДСТВА</h3>
+                        <br>
+                        <div class="flex gap-10">
+                            <input type="text" id="veh-input" class="input" placeholder="Гос. номер (напр. 4X99)">
+                            <button class="btn btn-primary" onclick="searchVehicle()">ПРОВЕРИТЬ</button>
+                        </div>
+                    </div>
+                    <div id="veh-result"></div>
+                </div>
+
+                <div id="mod-protocol" class="module">
+                    <div class="card">
+                        <div class="card-header"><h3>СОСТАВЛЕНИЕ РАПОРТА</h3></div>
+                        <div class="grid-2">
+                            <div>
+                                <label style="font-size:0.8rem; color:#888;">НАРУШИТЕЛЬ</label>
+                                <input type="text" class="input" id="prot-suspect" placeholder="Найти гражданина..." style="margin-bottom:15px;">
+                                
+                                <label style="font-size:0.8rem; color:#888;">СТАТЬИ ОБВИНЕНИЯ</label>
+                                <div style="height: 200px; overflow-y:auto; background: #000; border:1px solid #333; padding:10px;" id="laws-list">
+                                    </div>
+                            </div>
+                            <div>
+                                <label style="font-size:0.8rem; color:#888;">ОПИСАНИЕ СИТУАЦИИ</label>
+                                <textarea class="input" style="height:150px; resize:none; margin-bottom:15px;"></textarea>
+                                
+                                <div style="background: rgba(255,255,255,0.05); padding:15px; border-radius:4px;">
+                                    <div style="font-size:0.8rem; color:#888;">ИТОГОВОЕ НАКАЗАНИЕ:</div>
+                                    <div id="total-punishment" style="font-size:1.2rem; font-weight:bold; color:var(--accent);">0 $ / 0 месяцев</div>
+                                </div>
+                                <br>
+                                <button class="btn btn-primary" style="width:100%; justify-content:center;" onclick="alert('Рапорт отправлен в архив!')">ПОДПИСАТЬ И ОТПРАВИТЬ</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="mod-patients" class="module">
+                    <div class="card"><h3>РЕЕСТР ГОСПИТАЛИЗАЦИИ</h3><p>Доступно только для сотрудников EMS.</p></div>
                 </div>
 
             </div>
         </main>
+
+        <div class="radio-panel">
+            <div style="padding: 15px; border-bottom: 1px solid var(--border-light); font-weight: bold; background: #151515;">
+                <i class="fas fa-broadcast-tower" style="color: var(--status-danger);"></i> 911 / RADIO
+            </div>
+            <div class="radio-feed" id="radio-feed">
+                </div>
+            <div style="padding: 10px; border-top: 1px solid var(--border-light);">
+                <input type="text" class="input" placeholder="Тен-код..." style="font-size: 0.8rem;">
+            </div>
+        </div>
     </div>
 
-    <div id="toast-container"></div>
+    <div id="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">ДОСЬЕ #001</h3>
+                <button class="btn" onclick="closeModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="flex gap-20">
+                    <div style="width: 120px; height: 150px; background: #333; display:flex; align-items:center; justify-content:center; color:#555;">NO PHOTO</div>
+                    <div style="flex:1;">
+                        <div class="grid-2">
+                            <div><div style="font-size:0.7rem; color:#888;">ИМЯ</div><div id="m-name" class="bold">Name</div></div>
+                            <div><div style="font-size:0.7rem; color:#888;">ВОЗРАСТ</div><div id="m-age">00</div></div>
+                            <div><div style="font-size:0.7rem; color:#888;">ПОЛ</div><div id="m-gender">M</div></div>
+                            <div><div style="font-size:0.7rem; color:#888;">СТАТУС</div><div id="m-status">Clean</div></div>
+                        </div>
+                        <br>
+                        <div style="font-size:0.7rem; color:#888;">ЛИЦЕНЗИИ</div>
+                        <div id="m-lic" class="flex gap-10"></div>
+                    </div>
+                </div>
+                <hr style="border:0; border-bottom:1px solid #333; margin: 20px 0;">
+                <h4>ИСТОРИЯ АРЕСТОВ</h4>
+                <table id="m-history">
+                    <thead><tr><th>Дата</th><th>Статья</th><th>Офицер</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 
     <script>
-        // --- DATA LAYER ---
-        const LAWS = [
-            { id: "1.1", code: "УК", text: "Нанесение телесных повреждений", time: 20, fine: 1000 },
-            { id: "2.5", code: "УК", text: "Угон транспортного средства", time: 30, fine: 5000 },
-            { id: "3.1", code: "УК", text: "Убийство", time: 100, fine: 20000 },
-            { id: "10.5", code: "КоАП", text: "Нарушение ПДД (Скорость)", time: 0, fine: 500 },
-            { id: "12.1", code: "КоАП", text: "Неподчинение сотруднику", time: 10, fine: 2000 },
-            { id: "228", code: "УК", text: "Хранение запрещенных веществ", time: 40, fine: 10000 },
+        // --- DATA GENERATOR ---
+        const firstNames = ["James", "John", "Robert", "Michael", "William", "David", "Richard", "Joseph", "Thomas", "Charles", "Ivan", "Dmitry", "Sergey", "Alex"];
+        const lastNames = ["Smith", "Johnson", "Williams", "Jones", "Brown", "Davis", "Miller", "Wilson", "Moore", "Taylor", "Petrov", "Ivanov", "Sidorov"];
+        const statuses = ["CLEAN", "WANTED", "PAROLE", "MISSING"];
+        
+        let citizensDB = [];
+        let lawsDB = [
+            { id: "10.5", txt: "Превышение скорости", fine: 500, jail: 0 },
+            { id: "12.8", txt: "Управление в нетрезвом виде", fine: 5000, jail: 15 },
+            { id: "17.1", txt: "Посягательство на жизнь сотрудника", fine: 25000, jail: 100 },
+            { id: "6.1",  txt: "Неподчинение", fine: 2000, jail: 10 },
+            { id: "2.3",  txt: "Ограбление бизнеса", fine: 10000, jail: 40 },
         ];
 
-        let MOCK_CITIZENS = [
-            { name: "Сидоров Алексей Петрович", age: 34, lic: "A, B", status: "WANTED", note: "Вооружен и опасен" },
-            { name: "Петрова Мария Ивановна", age: 22, lic: "B", status: "CLEAN", note: "Законопослушная" },
-            { name: "Volkov Dmitry", age: 40, lic: "None", status: "PRISON", note: "Заключенный ИК-1" }
-        ];
-
-        let CURRENT_USER = { name: "", dept: "" };
-        let SESSION_LOGS = [];
-        let SELECTED_LAWS = [];
-
-        // --- CORE FUNCTIONS ---
-
-        // Boot Animation
-        window.onload = function() {
-            const log = document.getElementById('boot-log-text');
-            const lines = [
-                "BIOS CHECK... OK",
-                "LOADING KERNEL... OK",
-                "MOUNTING FILE SYSTEM... OK",
-                "CONNECTING TO GOVERNMENT SECURE NETWORK...",
-                "ESTABLISHING ENCRYPTED TUNNEL (256-bit)... SUCCESS",
-                "INITIALIZING UI SUBSYSTEM..."
-            ];
-            let i = 0;
-            const interval = setInterval(() => {
-                log.innerHTML += lines[i] + "<br>";
-                i++;
-                if(i >= lines.length) {
-                    clearInterval(interval);
-                    setTimeout(() => {
-                        document.getElementById('boot-screen').style.display = 'none';
-                        document.getElementById('login-screen').style.display = 'flex';
-                    }, 800);
-                }
-            }, 300);
-            
-            // Render Laws
-            const lawContainer = document.getElementById('law-list');
-            LAWS.forEach(law => {
-                const div = document.createElement('div');
-                div.className = 'law-item';
-                div.innerHTML = `<span><b>${law.code} ${law.id}</b> ${law.text}</span> <small>${law.fine}$ / ${law.time}м</small>`;
-                div.onclick = () => toggleLaw(div, law);
-                lawContainer.appendChild(div);
+        // Init Dummy Data
+        for(let i=0; i<50; i++) {
+            citizensDB.push({
+                id: 1000 + i,
+                name: `${firstNames[Math.floor(Math.random()*firstNames.length)]} ${lastNames[Math.floor(Math.random()*lastNames.length)]}`,
+                age: 18 + Math.floor(Math.random()*60),
+                gender: Math.random() > 0.2 ? "M" : "F",
+                status: Math.random() > 0.9 ? "WANTED" : "CLEAN",
+                licenses: ["Drive B"],
+                history: Math.random() > 0.7 ? [{date: "01.01.2023", reason: "10.5 Traffic", officer: "LSPD"}] : []
             });
-            
-            // Random Live Feed
-            setInterval(addRandomFeed, 8000);
-            updateClock();
-        };
-
-        function changeThemePreview(dept) {
-            const root = document.documentElement;
-            if(dept === 'MVD') root.style.setProperty('--theme-color', '#2f81f7');
-            if(dept === 'MCHS') root.style.setProperty('--theme-color', '#f85149');
         }
 
-        function playSound(type) {
-            // В реальном проекте раскомментировать
-            // document.getElementById('sfx-' + type).play().catch(e => {});
-        }
+        let userRole = "LSPD";
 
-        function startSystem() {
-            const name = document.getElementById('auth-name').value;
-            const dept = document.getElementById('auth-dept').value;
-            
-            if(!name) { alert("Введите имя!"); return; }
+        // --- SYSTEM FUNCTIONS ---
+        function bootSystem() {
+            const u = document.getElementById('login-user').value;
+            const d = document.getElementById('login-dept').value;
+            if(!u) return alert("ВВЕДИТЕ ДАННЫЕ");
 
-            CURRENT_USER.name = name;
-            CURRENT_USER.dept = dept;
+            userRole = d;
+            document.getElementById('ui-user').innerText = u;
+            document.getElementById('ui-dept').innerText = d === 'LSPD' ? "POLICE DEPT." : "EMERGENCY SERVICES";
 
-            // Apply Roles
-            if(dept === 'MVD') {
-                document.documentElement.style.setProperty('--theme-color', '#2f81f7');
-                document.querySelectorAll('.role-mchs').forEach(el => el.style.display = 'none');
-                document.getElementById('ui-dept').innerText = "POLICE DEPARTMENT";
-                document.getElementById('ui-dept').style.color = "#2f81f7";
-            } else {
-                document.documentElement.style.setProperty('--theme-color', '#f85149');
-                document.querySelectorAll('.role-mvd').forEach(el => el.style.display = 'none');
-                document.getElementById('ui-dept').innerText = "EMS / FIRE DEPT";
-                document.getElementById('ui-dept').style.color = "#f85149";
+            // Theme Switch
+            if(d === 'EMS') {
+                document.documentElement.style.setProperty('--accent', '#ef4444');
+                document.documentElement.style.setProperty('--accent-glow', 'rgba(239, 68, 68, 0.4)');
+                document.querySelector('.mvd-only').classList.add('hidden');
+                document.querySelector('.ems-only').classList.remove('hidden');
             }
 
-            document.getElementById('ui-name').innerText = name;
-            document.getElementById('login-screen').style.display = 'none';
-            document.getElementById('app-interface').style.display = 'grid';
+            // Animation
+            const overlay = document.getElementById('login-overlay');
+            const app = document.getElementById('app');
             
-            playSound('boot');
-            showToast(`Добро пожаловать, ${name}`, 'info');
-            addToArchive("Начало смены. Вход в систему.");
+            overlay.style.opacity = 0;
+            setTimeout(() => {
+                overlay.style.display = 'none';
+                app.style.opacity = 1;
+                initMap();
+                renderBolo();
+                renderLaws();
+                startRadio();
+            }, 1000);
         }
 
-        // --- NAVIGATION ---
-        function openModule(id) {
-            playSound('click');
-            document.querySelectorAll('.module-page').forEach(m => m.classList.remove('active'));
-            document.querySelectorAll('nav li').forEach(l => l.classList.remove('active'));
-            
-            document.getElementById('mod-' + id).classList.add('active');
-            // Hacky active class toggle for list items
-            const navMap = {
-                'dashboard': 0, 'protocols': 1, 'search': 2, 'vehicles': 3,
-                'medical': 4, 'beds': 5, 'database': 6, 'archive': 7
-            };
-            // В реальном коде лучше через ID, тут упрощено
+        function nav(mod) {
+            document.querySelectorAll('.module').forEach(m => m.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            document.getElementById('mod-' + mod).classList.add('active');
+            event.currentTarget.classList.add('active');
         }
 
-        function setStatus(btn, text) {
-            document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active', 'busy'));
-            btn.classList.add(text === 'ЗАНЯТ' ? 'busy' : 'active');
-            showToast(`Статус обновлен: ${text}`);
-            addToArchive(`Смена статуса: ${text}`);
-        }
+        // --- FEATURES ---
+        function performSearch() {
+            const q = document.getElementById('search-input').value.toLowerCase();
+            const res = document.getElementById('search-results');
+            res.innerHTML = "";
 
-        // --- MVD LOGIC ---
-        function toggleLaw(div, law) {
-            if(SELECTED_LAWS.includes(law)) {
-                SELECTED_LAWS = SELECTED_LAWS.filter(l => l !== law);
-                div.classList.remove('selected');
-            } else {
-                SELECTED_LAWS.push(law);
-                div.classList.add('selected');
-            }
-            calculatePunishment();
-        }
+            if(q.length < 2) return;
 
-        function calculatePunishment() {
-            let totalFine = 0;
-            let totalTime = 0;
-            SELECTED_LAWS.forEach(l => {
-                totalFine += l.fine;
-                totalTime += l.time;
-            });
-            document.getElementById('prot-result').value = `Штраф: ${totalFine}$ | Срок: ${totalTime} мес.`;
-        }
+            const found = citizensDB.filter(c => c.name.toLowerCase().includes(q) || c.id.toString().includes(q));
 
-        function submitProtocol() {
-            const name = document.getElementById('prot-name').value;
-            if(!name || SELECTED_LAWS.length === 0) {
-                alert("Заполните имя и выберите статьи!");
-                return;
-            }
-            const articles = SELECTED_LAWS.map(l => l.code + " " + l.id).join(", ");
-            const punishment = document.getElementById('prot-result').value;
-            
-            addToArchive(`ПРОТОКОЛ: ${name}. Статьи: ${articles}. ${punishment}`);
-            showToast("Протокол успешно загружен в базу", "success");
-            
-            // Clear form
-            document.getElementById('prot-name').value = "";
-            document.getElementById('prot-desc').value = "";
-            SELECTED_LAWS = [];
-            document.querySelectorAll('.law-item').forEach(el => el.classList.remove('selected'));
-            document.getElementById('prot-result').value = "";
-            
-            // Update Stats
-            let count = parseInt(document.getElementById('stat-reports').innerText);
-            document.getElementById('stat-reports').innerText = count + 1;
-        }
-
-        function searchCitizen() {
-            const query = document.getElementById('search-db-input').value.toLowerCase();
-            const container = document.getElementById('search-results');
-            container.innerHTML = "";
-            
-            if(query.length < 2) return;
-
-            const results = MOCK_CITIZENS.filter(c => c.name.toLowerCase().includes(query));
-            
-            if(results.length === 0) {
-                container.innerHTML = "<div style='padding:20px; color:#555'>Совпадений не найдено</div>";
-                return;
-            }
-
-            results.forEach(c => {
-                let badgeClass = c.status === 'WANTED' ? 'badge-red' : (c.status === 'CLEAN' ? 'badge-green' : 'badge-blue');
-                let html = `
-                    <div class="card" style="border-left: 5px solid ${c.status === 'WANTED' ? 'red' : 'green'}">
-                        <div style="display:flex; justify-content:space-between;">
-                            <h3>${c.name} <span class="badge ${badgeClass}">${c.status}</span></h3>
-                            <span>Лицензии: ${c.lic}</span>
+            found.forEach(c => {
+                let color = c.status === 'WANTED' ? 'var(--status-danger)' : 'var(--status-ok)';
+                res.innerHTML += `
+                    <div class="card" onclick="openModal(${c.id})">
+                        <div class="flex" style="justify-content:space-between">
+                            <h3 style="margin:0">${c.name}</h3>
+                            <span class="tag" style="background:${color}; color:#000">${c.status}</span>
                         </div>
-                        <p style="color:var(--text-muted)">${c.note}</p>
-                        <button class="btn-main" style="width:auto; font-size:12px; padding:5px 10px;">Открыть полное досье</button>
+                        <div style="font-size:0.8rem; color:#888; margin-top:5px;">ID: ${c.id} | Возраст: ${c.age}</div>
                     </div>
                 `;
-                container.innerHTML += html;
+            });
+            if(found.length === 0) res.innerHTML = "<div style='color:#666'>Ничего не найдено</div>";
+        }
+
+        function openModal(id) {
+            const c = citizensDB.find(x => x.id === id);
+            if(!c) return;
+
+            document.getElementById('modal-title').innerText = "ДОСЬЕ #" + c.id;
+            document.getElementById('m-name').innerText = c.name;
+            document.getElementById('m-age').innerText = c.age;
+            document.getElementById('m-gender').innerText = c.gender;
+            
+            const st = document.getElementById('m-status');
+            st.innerText = c.status;
+            st.style.color = c.status === 'WANTED' ? 'red' : 'green';
+
+            document.getElementById('m-lic').innerHTML = c.licenses.map(l => `<span class="tag tag-green">${l}</span>`).join('');
+            
+            const hist = document.querySelector('#m-history tbody');
+            hist.innerHTML = c.history.map(h => `<tr><td>${h.date}</td><td>${h.reason}</td><td>${h.officer}</td></tr>`).join('') || "<tr><td colspan='3' style='color:#555'>Записей нет</td></tr>";
+
+            document.getElementById('modal-overlay').style.display = 'flex';
+        }
+
+        function closeModal() { document.getElementById('modal-overlay').style.display = 'none'; }
+
+        function renderLaws() {
+            const list = document.getElementById('laws-list');
+            lawsDB.forEach(l => {
+                const div = document.createElement('div');
+                div.style.padding = "5px"; div.style.borderBottom = "1px solid #222"; div.style.cursor = "pointer";
+                div.innerHTML = `<span style="color:var(--accent); font-weight:bold;">${l.id}</span> ${l.txt}`;
+                div.onclick = function() {
+                    this.style.background = "#222";
+                    updatePunishment(l.fine, l.jail);
+                };
+                list.appendChild(div);
             });
         }
 
-        // --- EMS LOGIC ---
-        function submitMedical() {
-            const name = document.getElementById('med-name').value;
-            const triage = document.getElementById('med-triage').value;
-            
-            if(!name) return;
-
-            let color = "white";
-            if(triage === 'green') color = "#3fb950";
-            if(triage === 'yellow') color = "#d29922";
-            if(triage === 'red') color = "#f85149";
-
-            const table = document.getElementById('med-table-body');
-            const row = `<tr>
-                <td>${name}</td>
-                <td><span class="badge" style="background:${color}; color:black;">${triage.toUpperCase()} CODE</span></td>
-                <td>${new Date().toLocaleTimeString()}</td>
-            </tr>`;
-            
-            table.innerHTML += row;
-            addToArchive(`ГОСПИТАЛИЗАЦИЯ: ${name} (Код: ${triage})`);
-            showToast("Пациент зарегистрирован");
+        let totalFine = 0, totalJail = 0;
+        function updatePunishment(f, j) {
+            totalFine += f; totalJail += j;
+            document.getElementById('total-punishment').innerText = `${totalFine} $ / ${totalJail} месяцев`;
         }
 
-        // --- SYSTEM UTILS ---
-        function updateClock() {
-            const now = new Date();
-            document.getElementById('clock').innerText = now.toLocaleTimeString();
-            setTimeout(updateClock, 1000);
+        function renderBolo() {
+            const bolo = document.getElementById('bolo-list');
+            const wanted = citizensDB.filter(c => c.status === 'WANTED').slice(0, 3);
+            wanted.forEach(w => {
+                bolo.innerHTML += `
+                    <div style="display:flex; gap:10px; margin-bottom:10px; background:rgba(255,0,0,0.1); padding:10px; border-left:3px solid red;">
+                        <div style="width:40px; height:40px; background:#333;"></div>
+                        <div>
+                            <div class="bold" style="color:#faa;">${w.name}</div>
+                            <div style="font-size:0.75rem;">Розыск: Особо тяжкие</div>
+                        </div>
+                    </div>
+                `;
+            });
         }
 
-        function addRandomFeed() {
-            const messages = [
-                "10-55, Черный седан, район Миррор-Парк",
-                "Диспетчер: Всем юнитам, код 3, ограбление банка!",
-                "Поступил вызов: Пожар в жилом доме",
-                "Система: Обновление базы данных розыска...",
-                "Внимание: План перехват на шоссе Сенора"
+        // --- MAP SIMULATION ---
+        function initMap() {
+            const map = document.getElementById('map-box');
+            // Add random blips
+            for(let i=0; i<5; i++) {
+                const b = document.createElement('div');
+                b.className = 'blip';
+                b.style.top = Math.random() * 80 + 10 + "%";
+                b.style.left = Math.random() * 80 + 10 + "%";
+                map.appendChild(b);
+            }
+        }
+
+        // --- RADIO SIMULATION ---
+        function startRadio() {
+            const msgs = [
+                "10-55, Черный Buffalo, район Вайнвуд",
+                "Диспетчер: Код 2 всем патрулям, драка в баре",
+                "UNIT-12: Выхожу на смену, 10-8",
+                "UNIT-04: Принял вызов 312",
+                "Система: Новый ордер добавлен в базу"
             ];
-            const msg = messages[Math.floor(Math.random() * messages.length)];
-            const feed = document.getElementById('live-feed');
-            feed.innerHTML = `<div>[${new Date().toLocaleTimeString()}] ${msg}</div>` + feed.innerHTML;
-        }
-
-        function addToArchive(text) {
-            const time = new Date().toLocaleTimeString();
-            SESSION_LOGS.push(`[${time}] ${text}`);
+            const feed = document.getElementById('radio-feed');
             
-            const container = document.getElementById('archive-content');
-            container.innerHTML = SESSION_LOGS.map(l => `<div style="padding:5px; border-bottom:1px solid #333;">${l}</div>`).join('');
+            setInterval(() => {
+                const m = msgs[Math.floor(Math.random() * msgs.length)];
+                const isPrio = m.includes("Код 3") || m.includes("ордер");
+                const div = document.createElement('div');
+                div.className = `radio-msg ${isPrio ? 'priority' : ''}`;
+                div.innerHTML = `<span style="opacity:0.6">[${new Date().toLocaleTimeString().slice(0,5)}]</span> ${m}`;
+                feed.insertBefore(div, feed.firstChild);
+                if(feed.children.length > 20) feed.lastChild.remove();
+            }, 5000);
         }
+        
+        // Clock
+        setInterval(() => { document.getElementById('clock').innerText = new Date().toLocaleTimeString(); }, 1000);
 
-        function showToast(text, type='info') {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            toast.className = 'toast';
-            toast.innerHTML = `<i class="fas fa-info-circle"></i> ${text}`;
-            container.appendChild(toast);
-            
-            playSound('alert');
-
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
-        }
-
-        function copyReport() {
-            const text = SESSION_LOGS.join('\n');
-            navigator.clipboard.writeText(text);
-            showToast("Отчет скопирован в буфер обмена!");
-        }
     </script>
 </body>
 </html>
